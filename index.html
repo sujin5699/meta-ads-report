@@ -1500,15 +1500,15 @@ function exportWithData() {
         exportedAt: new Date().toISOString(),
       });
 
-      // 내장 데이터 주입 — DOMContentLoaded 없이 즉시 실행 방식으로
+      // 내장 데이터 주입 — 스크립트 맨 끝 마커 위치에 삽입
       const marker = '/* __EMBEDDED_DATA_PLACEHOLDER__ */';
-      const inject = `/* __EMBEDDED_DATA_PLACEHOLDER__ */\n  const __EMBEDDED__ = ${payload};\n  if(typeof _loadEmbedded === 'function') _loadEmbedded(__EMBEDDED__);`;
+      const inject = `const __EMBEDDED__ = ${payload};\n  _loadEmbedded(__EMBEDDED__);`;
 
       if (src.includes(marker)) {
         src = src.replace(marker, inject);
       } else {
-        src = src.replace('// ── STATE ──', `// ── STATE ──\n  /* __EMBEDDED_DATA_PLACEHOLDER__ */`);
-        src = src.replace('/* __EMBEDDED_DATA_PLACEHOLDER__ */', inject);
+        // 마커가 없으면 </script> 바로 앞에 삽입
+        src = src.replace('</script>\n</body>', `${inject}\n</script>\n</body>`);
       }
 
       const channels = [...new Set(LOADED_FILES.map(f => f.channel))].join('-');
@@ -1834,6 +1834,9 @@ function renderCompareModal() {
   }`;
   document.head.appendChild(style);
 })();
+
+// ── EMBEDDED DATA ENTRY POINT ──
+/* __EMBEDDED_DATA_PLACEHOLDER__ */
 </script>
 </body>
 </html>
