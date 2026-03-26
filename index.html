@@ -2554,13 +2554,27 @@ function applyThumb(rowId, info) {
   if (!el) return;
 
   const isVideo = info.type === 'video';
-  el.outerHTML = `
-    <div class="card-thumb" id="${elId}">
-      <img src="${info.thumbUrl}" alt="소재 썸네일"
-        onerror="this.parentNode.innerHTML='<div class=\\"card-thumb-placeholder\\">이미지 없음</div>'"
-        loading="lazy">
-      ${isVideo ? '<div class="thumb-play-btn">▶</div>' : ''}
-    </div>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'card-thumb';
+  wrap.id = elId;
+
+  const img = document.createElement('img');
+  img.src = info.thumbUrl;
+  img.alt = '소재 썸네일';
+  img.loading = 'lazy';
+  img.onerror = function() {
+    this.parentNode.innerHTML = '<div class="card-thumb-placeholder">이미지 없음</div>';
+  };
+  wrap.appendChild(img);
+
+  if (isVideo) {
+    const play = document.createElement('div');
+    play.className = 'thumb-play-btn';
+    play.textContent = '▶';
+    wrap.appendChild(play);
+  }
+
+  el.replaceWith(wrap);
 }
 
 // ── localStorage 저장/복원 ──
