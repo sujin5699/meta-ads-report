@@ -1836,7 +1836,7 @@ function renderTab(tab) {
     return `
     <div class="creative-card ${rankClass}" draggable="true" data-id="${r.id}">
       <div class="card-rank">${rankLabel}</div>
-      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="width:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;"><div style="position:relative;width:100%;padding-bottom:100%;height:0;background:linear-gradient(90deg,#e8eaf0 25%,#f7f8fc 50%,#e8eaf0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;"></div></div>
+      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="width:100%;position:relative;padding-bottom:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#e8eaf0 25%,#f7f8fc 50%,#e8eaf0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;"></div>
       <div class="card-name">
         <span class="tag" style="background:${goalColor}1a;color:${goalColor}">${goalLabel}</span>
         ${r.name}
@@ -2633,33 +2633,34 @@ function applyThumb(rowId, info) {
   const el = document.getElementById(elId);
   if (!el) return;
 
-  // padding-bottom:100% = 정사각형 비율 고정 (aspect-ratio 폴백 없이 확실하게 동작)
-  const outer = document.createElement('div');
-  outer.id = elId;
-  outer.style.cssText = 'width:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
-
-  const inner = document.createElement('div');
-  inner.style.cssText = 'position:relative;width:100%;padding-bottom:100%;height:0;overflow:hidden;';
+  // position:relative + padding-bottom:100% 같은 요소에 있어야 절대위치 자식 height:100% 정상 동작
+  const wrap = document.createElement('div');
+  wrap.id = elId;
+  wrap.style.cssText = 'width:100%;position:relative;padding-bottom:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
 
   const img = document.createElement('img');
   img.src = info.thumbUrl;
   img.alt = '소재 썸네일';
   img.loading = 'lazy';
-  img.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
+  // inset:0 으로 상하좌우 모두 0, object-fit:contain 으로 원본 비율 유지
+  img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
   img.onerror = function() {
-    inner.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9299ab;font-size:11px;">이미지 없음</div>';
+    this.style.display = 'none';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9299ab;font-size:11px;';
+    msg.textContent = '이미지 없음';
+    wrap.appendChild(msg);
   };
-  inner.appendChild(img);
+  wrap.appendChild(img);
 
   if (info.type === 'video') {
     const play = document.createElement('div');
-    play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:rgba(0,0,0,0.55);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;pointer-events:none;z-index:1;';
+    play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:rgba(0,0,0,0.55);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;pointer-events:none;';
     play.textContent = '▶';
-    inner.appendChild(play);
+    wrap.appendChild(play);
   }
 
-  outer.appendChild(inner);
-  el.replaceWith(outer);
+  el.replaceWith(wrap);
 }
 
 // ── localStorage 저장/복원 ──
