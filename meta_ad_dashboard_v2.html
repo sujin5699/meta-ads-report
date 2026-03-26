@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta 광고 소재 성과 리포트</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #f7f8fc;
+  --surface: #ffffff;
+  --border: #e8eaf0;
+  --border2: #d0d4e0;
+  --ink: #0f1117;
+  --ink2: #5a5f72;
+  --ink3: #9299ab;
+  --accent: #3b5bdb;
+  --accent-light: #eef1ff;
+  --sales: #3b5bdb;
+  --sales-light: #eef1ff;
+  --traffic: #0ca678;
+  --traffic-light: #e6f8f3;
+  --awareness: #e67700;
+  --awareness-light: #fff4e0;
+  --danger: #e03131;
+  --success: #2f9e44;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 14px; }
+body {
+  font-family: 'Pretendard', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-logo {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.3px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.topbar-logo span { color: var(--accent); }
+.topbar-sep { width: 1px; height: 18px; background: var(--border); flex-shrink:0; }
+.topbar-title { font-size: 13px; color: var(--ink2); font-weight: 500; white-space:nowrap; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.upload-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.upload-btn:hover { background: #2f4dbf; }
+.export-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--ink2);
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: none;
+}
+.export-btn:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+.export-btn.visible { display: flex; }
+
+/* ── LAYOUT ── */
+.page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 48px; }
+
+/* ── UPLOAD SCREEN ── */
+.upload-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 56px);
+  gap: 0;
+}
+.upload-zone {
+  width: 500px;
+  border: 2px dashed var(--border2);
+  border-radius: 16px;
+  padding: 52px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface);
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-light); }
+.upload-icon { font-size: 40px; margin-bottom: 16px; }
+.upload-title { font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.upload-sub { font-size: 13px; color: var(--ink3); line-height: 1.6; }
+.upload-hint {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 1.8;
+  text-align: left;
+}
+.upload-hint b { color: var(--ink2); }
+.upload-hint .ch-tag {
+  display: inline-block;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 700;
+  font-size: 10px;
+  margin: 2px 2px;
+}
+
+/* ── FILTERS ── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.filter-group { display: flex; align-items: center; gap: 7px; }
+.filter-label { font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink:0; }
+select, input[type="date"], input[type="number"] {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+input[type="number"] { width: 60px; }
+.btn-apply {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-apply:hover { background: #2f4dbf; }
+
+/* channel pill in filter */
+.ch-pill-list {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.ch-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s;
+  background: var(--bg);
+  color: var(--ink3);
+  border-color: var(--border);
+}
+.ch-pill:hover { border-color: var(--accent); color: var(--accent); }
+.ch-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ch-pill.ch-all.active { background: var(--ink2); border-color: var(--ink2); }
+
+/* ── SUMMARY KPIS ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.kpi-value { font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.5px; line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--ink3); margin-top: 4px; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+}
+.tab {
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab .dot { width: 8px; height: 8px; border-radius: 50%; }
+.tab-sales .dot   { background: var(--sales); }
+.tab-traffic .dot { background: var(--traffic); }
+.tab-awareness .dot { background: var(--awareness); }
+.tab-all .dot { background: var(--ink2); }
+
+/* ── SECTION ── */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-sales     { background: var(--sales-light);     color: var(--sales); }
+.badge-traffic   { background: var(--traffic-light);   color: var(--traffic); }
+.badge-awareness { background: var(--awareness-light); color: var(--awareness); }
+.badge-all       { background: #f0f0f5; color: var(--ink2); }
+
+/* ── SORT SELECTOR ── */
+.sort-select { font-size: 11px; padding: 5px 9px; }
+
+/* ── CREATIVE CARDS ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.creative-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.15s, border-color 0.15s;
+  position: relative;
+}
+.creative-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.1); border-color: var(--border2); }
+.creative-card.rank-1 { border-left: 3px solid #f5a623; }
+.creative-card.rank-2 { border-left: 3px solid #9b9b9b; }
+.creative-card.rank-3 { border-left: 3px solid #c26b2a; }
+
+.card-rank {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink3);
+}
+.rank-1 .card-rank { color: #f5a623; }
+.rank-2 .card-rank { color: #9b9b9b; }
+.rank-3 .card-rank { color: #c26b2a; }
+
+.card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.5;
+  margin-bottom: 10px;
+  padding-right: 36px;
+  word-break: keep-all;
+}
+.card-name .tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.card-meta {
+  font-size: 10px;
+  color: var(--ink3);
+  margin-bottom: 10px;
+  margin-top: -4px;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.card-meta span {
+  background: #f3f4f8;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.card-meta .channel-badge {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* metrics grid — 4 cols for 구매, 3 for others */
+.metrics-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.metrics-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.metrics-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.metric-item { text-align: center; }
+.metric-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+.metrics-grid.cols-4 .metric-val { font-size: 13px; }
+.metric-val.good  { color: var(--success); }
+.metric-val.warn  { color: var(--danger); }
+.metric-lbl {
+  font-size: 10px;
+  color: var(--ink3);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* bar chart inline */
+.bar-wrap { margin-top: 10px; }
+.bar-label-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink3); margin-bottom: 4px; }
+.bar-track { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+/* ── CHART SECTION ── */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.chart-title { font-size: 12px; font-weight: 700; color: var(--ink2); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-canvas-wrap { position: relative; height: 220px; }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 48px; color: var(--ink3); font-size: 13px; }
+
+/* ── FOOTER ── */
+.dash-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--ink3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  .chart-row { grid-template-columns: 1fr; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .filter-bar { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── DRAG ── */
+.creative-card[draggable="true"] { cursor: grab; }
+.creative-card[draggable="true"]:active { cursor: grabbing; }
+.creative-card.dragging { opacity: 0.4; transform: scale(0.97); }
+.creative-card.in-compare { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── COMPARE TRAY (sticky bottom) ── */
+.compare-tray {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(15,17,23,0.97);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.compare-tray.visible { transform: translateY(0); }
+.compare-tray.drag-over { background: rgba(59,91,219,0.92); }
+
+.tray-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tray-slots {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+.tray-slot {
+  width: 200px;
+  height: 52px;
+  border: 1.5px dashed rgba(255,255,255,0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.tray-slot.filled {
+  border-style: solid;
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+}
+.tray-slot .slot-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  padding: 0 28px 0 10px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tray-slot .slot-ch {
+  position: absolute;
+  top: 5px; left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.tray-slot .slot-remove {
+  position: absolute;
+  top: 4px; right: 6px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  line-height: 1;
+}
+.tray-slot .slot-remove:hover { color: #fff; }
+.tray-slot .slot-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  position: absolute;
+  bottom: 5px; right: 8px;
+}
+
+.tray-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-compare {
+  padding: 9px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.btn-compare.ready { opacity: 1; pointer-events: auto; }
+.btn-compare.ready:hover { background: #2f4dbf; transform: translateY(-1px); }
+.btn-tray-clear {
+  padding: 9px 14px;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-tray-clear:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+/* ── DROP HINT (dragging indicator) ── */
+.drop-hint {
+  position: fixed;
+  bottom: 80px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(59,91,219,0.9);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 201;
+  white-space: nowrap;
+}
+.drop-hint.show { opacity: 1; }
+
+/* ── COMPARE MODAL ── */
+.compare-modal-bg {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(10,12,20,0.65);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.compare-modal-bg.open { opacity: 1; pointer-events: auto; }
+
+.compare-modal {
+  background: var(--surface);
+  border-radius: 20px;
+  width: min(96vw, 1100px);
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  transform: translateY(20px) scale(0.98);
+  transition: transform 0.25s cubic-bezier(0.34,1.2,0.64,1);
+}
+.compare-modal-bg.open .compare-modal { transform: translateY(0) scale(1); }
+
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-title {
+  font-size: 15px; font-weight: 800; color: var(--ink);
+  display: flex; align-items: center; gap: 10px;
+}
+.modal-subtitle { font-size: 12px; color: var(--ink3); font-weight: 400; }
+.btn-modal-close {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--ink3);
+  transition: all 0.15s;
+}
+.btn-modal-close:hover { background: var(--border); color: var(--ink); }
+
+.modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 24px;
+}
+
+/* radar + table layout */
+.compare-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) { .compare-layout { grid-template-columns: 1fr; } }
+
+.compare-radar-card {
+  background: var(--bg);
+  border-radius: 14px;
+  padding: 20px;
+  position: sticky;
+  top: 0;
+}
+.compare-radar-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--ink3); margin-bottom: 14px;
+}
+.compare-radar-wrap { position: relative; height: 280px; }
+
+/* legend */
+.compare-legend {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; color: var(--ink2);
+}
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* table */
+.compare-table-wrap { overflow-x: auto; }
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.compare-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink3);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+.compare-table th.col-name { min-width: 160px; }
+.compare-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--bg); }
+
+.td-name { font-weight: 600; color: var(--ink); line-height: 1.4; }
+.td-ch { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-bottom: 3px; display: inline-block; }
+.td-val { font-weight: 700; color: var(--ink); white-space: nowrap; }
+.td-val.best { color: var(--success); }
+.td-val.best::after { content: ' ✓'; font-size: 10px; }
+.td-val.worst { color: var(--danger); }
+.td-bar-wrap { margin-top: 4px; height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.td-bar-fill { height: 100%; border-radius: 3px; }
+
+.compare-color-0 { --cc: #3b5bdb; }
+.compare-color-1 { --cc: #e67700; }
+.compare-color-2 { --cc: #0ca678; }
+.compare-color-3 { --cc: #c91e3a; }
+
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-logo">Meta Ads <span>·</span> 소재 리포트</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">캠페인 소재 성과 대시보드</div>
+  <div class="topbar-right">
+    <div id="fileChips" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:500px;"></div>
+    <button class="export-btn" id="exportBtn" onclick="exportWithData()">
+      🔗 공유용 내보내기
+    </button>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      📂 엑셀 업로드
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="loadFile(this)" multiple>
+  </div>
+</header>
+
+<!-- UPLOAD SCREEN -->
+<div id="uploadScreen" class="upload-screen">
+  <div class="upload-zone" id="dropzone"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="handleDrop(event)"
+    onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📊</div>
+    <div class="upload-title">메타 광고 로우데이터 업로드</div>
+    <div class="upload-sub">광고관리자에서 내보낸 .xlsx 파일을<br>여기에 드래그하거나 클릭해서 선택하세요</div>
+    <div class="upload-hint">
+      <b>채널 자동 구분:</b> 파일명 앞 단어로 채널을 인식합니다<br>
+      <span class="ch-tag">브스</span>브스-소재-리포트.xlsx &nbsp;→ 채널: 브스<br>
+      <span class="ch-tag">공식몰</span>공식몰-소재-리포트.xlsx &nbsp;→ 채널: 공식몰<br>
+      <span class="ch-tag">컬리</span>컬리-소재-리포트.xlsx &nbsp;→ 채널: 컬리<br>
+      <br>
+      <b>여러 파일 동시 업로드 가능 · 누적 저장됨</b>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
+<div class="page">
+
+  <!-- FILTERS -->
+  <div class="filter-bar">
+    <!-- 채널 필터 -->
+    <div class="filter-group">
+      <span class="filter-label">채널</span>
+      <div class="ch-pill-list" id="channelPills">
+        <div class="ch-pill ch-all active" onclick="setChannel('')">전체</div>
+      </div>
+    </div>
+    <div class="filter-sep"></div>
+
+    <!-- 기간 -->
+    <div class="filter-group">
+      <span class="filter-label">기간</span>
+      <input type="date" id="dateFrom">
+      <span style="color:var(--ink3);font-size:12px;">~</span>
+      <input type="date" id="dateTo">
+    </div>
+    <div class="filter-sep"></div>
+
+    <!-- 상위 N개 -->
+    <div class="filter-group">
+      <span class="filter-label">상위</span>
+      <input type="number" id="topN" value="5" min="1" max="20">
+      <span style="font-size:12px;color:var(--ink3);">개</span>
+    </div>
+    <div class="filter-sep"></div>
+
+    <!-- 캠페인 -->
+    <div class="filter-group">
+      <span class="filter-label">캠페인</span>
+      <select id="filterCampaign" onchange="onCampaignChange()" style="max-width:200px;">
+        <option value="">전체 캠페인</option>
+      </select>
+    </div>
+    <div class="filter-sep"></div>
+
+    <!-- 광고세트 -->
+    <div class="filter-group">
+      <span class="filter-label">광고세트</span>
+      <select id="filterAdset" style="max-width:200px;">
+        <option value="">전체 광고세트</option>
+      </select>
+    </div>
+    <div class="filter-sep"></div>
+
+    <!-- 정렬 -->
+    <div class="filter-group">
+      <span class="filter-label">정렬기준</span>
+      <select id="sortMetric">
+        <option value="지출">지출 금액</option>
+        <option value="노출">노출</option>
+        <option value="링크클릭">링크 클릭</option>
+        <option value="구매">구매수</option>
+        <option value="ROAS">ROAS</option>
+        <option value="CPA">구매당 비용 (낮은순)</option>
+        <option value="CPC">CPC (낮은순)</option>
+        <option value="CPM">CPM (낮은순)</option>
+      </select>
+    </div>
+    <button class="btn-apply" onclick="applyFilters()">적용</button>
+    <div style="margin-left:auto;font-size:11px;color:var(--ink3);" id="dataInfo"></div>
+  </div>
+
+  <!-- KPI SUMMARY -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- CHART ROW -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">목적별 지출 비중</div>
+      <div class="chart-canvas-wrap"><canvas id="chartPie"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">상위 소재 성과 비교 (현재 탭)</div>
+      <div class="chart-canvas-wrap"><canvas id="chartBar"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab tab-all active"    onclick="setTab('ALL')"              ><div class="dot"></div>전체</div>
+    <div class="tab tab-sales"         onclick="setTab('OUTCOME_SALES')"    ><div class="dot"></div>구매 전환</div>
+    <div class="tab tab-traffic"       onclick="setTab('LINK_CLICKS')"      ><div class="dot"></div>트래픽</div>
+    <div class="tab tab-awareness"     onclick="setTab('OUTCOME_AWARENESS')"><div class="dot"></div>인지도</div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="section-head">
+    <div class="section-title">
+      <span id="sectionTitle">전체 소재</span>
+      <span class="section-badge" id="sectionBadge">ALL</span>
+    </div>
+    <div style="font-size:11px;color:var(--ink3);" id="sectionDesc"></div>
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+
+  <!-- FOOTER -->
+  <div class="dash-footer">
+    <span id="footerLeft"></span>
+    <span>Meta Ads 소재 성과 리포트</span>
+  </div>
+
+</div>
+</div>
+
+<!-- DROP HINT -->
+<div class="drop-hint" id="dropHint">📊 하단 비교함에 드롭하세요</div>
+
+<!-- COMPARE TRAY -->
+<div class="compare-tray" id="compareTray"
+  ondragover="trayDragOver(event)"
+  ondragleave="trayDragLeave(event)"
+  ondrop="trayDrop(event)">
+  <div class="tray-label">소재 비교함</div>
+  <div class="tray-slots" id="traySlots"></div>
+  <div class="tray-actions">
+    <button class="btn-compare" id="btnCompare" onclick="openCompareModal()">📊 비교하기</button>
+    <button class="btn-tray-clear" onclick="clearTray()">초기화</button>
+  </div>
+</div>
+
+<!-- COMPARE MODAL -->
+<div class="compare-modal-bg" id="compareModalBg" onclick="closeModalOnBg(event)">
+  <div class="compare-modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        📊 소재 비교
+        <span class="modal-subtitle" id="modalSubtitle"></span>
+      </div>
+      <div class="btn-modal-close" onclick="closeCompareModal()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="compare-layout">
+        <div class="compare-radar-card">
+          <div class="compare-radar-title">종합 성과 비교</div>
+          <div class="compare-radar-wrap"><canvas id="chartRadar"></canvas></div>
+          <div class="compare-legend" id="compareLegend"></div>
+        </div>
+        <div>
+          <div class="compare-table-wrap">
+            <table class="compare-table" id="compareTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let RAW = [];
+let FILTERED = [];
+let currentTab = 'ALL';
+let currentChannel = '';
+let chartPie, chartBar;
+let LOADED_FILES = [];
+let AGG = {};
+
+// ── 채널 추출 (파일명 첫 단어) ──
+function extractChannel(filename) {
+  // 확장자 제거 후 첫 단어 (하이픈, 공백, 언더스코어 앞)
+  const base = filename.replace(/\.xlsx?$/i, '');
+  const m = base.match(/^([^_\-\s]+)/);
+  return m ? m[1] : base;
+}
+
+// ── 컬럼 통합 읽기 (브스·공식몰 모두 지원) ──
+function getNum(r, ...keys) {
+  for (const k of keys) {
+    if (r[k] !== undefined && r[k] !== null && r[k] !== '' && r[k] !== '-') {
+      const n = parseFloat(String(r[k]).replace(/,/g, ''));
+      if (!isNaN(n)) return n;
+    }
+  }
+  return 0;
+}
+
+function num(v) {
+  if (v === null || v === undefined || v === '' || v === '-') return 0;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+// ── 파일 드롭 / 업로드 ──
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  Array.from(e.dataTransfer.files).forEach(f => processFile(f));
+}
+function loadFile(input) {
+  Array.from(input.files).forEach(f => processFile(f));
+  input.value = '';
+}
+
+function processFile(file) {
+  const channel = extractChannel(file.name);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const newRows = XLSX.utils.sheet_to_json(ws, { raw:false });
+
+      // 채널 태깅
+      newRows.forEach(r => { r.__channel = channel; });
+
+      // 누적 + 중복 제거 (광고ID + 일 + 채널 기준)
+      const existingKeys = new Set(RAW.map(r => (r['광고 ID']||r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel||'')));
+      const added = newRows.filter(r => {
+        const key = (r['광고 ID']||r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel||'');
+        return !existingKeys.has(key);
+      });
+      RAW = [...RAW, ...added];
+
+      LOADED_FILES.push({ name: file.name, channel, count: newRows.length, added: added.length });
+      renderFileChips();
+      buildAggregated();
+
+      document.getElementById('uploadScreen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('exportBtn').classList.add('visible');
+      initFilters();
+      applyFilters();
+    } catch(err) {
+      alert('파일을 읽을 수 없습니다: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderFileChips() {
+  const wrap = document.getElementById('fileChips');
+  wrap.innerHTML = LOADED_FILES.map((f, i) => {
+    const colors = getChannelColor(f.channel);
+    return `
+    <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+      background:${colors.bg};border:1.5px solid ${colors.border};border-radius:20px;
+      font-size:11px;color:${colors.fg};font-weight:600;white-space:nowrap;">
+      <span style="font-size:10px;font-weight:800;">${f.channel}</span>
+      <span style="font-weight:400;color:${colors.fg}88;">${f.name.replace(/\.xlsx?$/i,'').replace(/^[^_\-\s]+[\-_\s]*/,'')}</span>
+      <span style="color:${colors.fg}66;font-weight:400;">(+${f.added.toLocaleString()}행)</span>
+      <span onclick="removeFile(${i})" style="cursor:pointer;opacity:0.5;font-size:13px;line-height:1;margin-left:2px;" title="제거">×</span>
+    </div>`;
+  }).join('') +
+    (LOADED_FILES.length > 1
+      ? `<button onclick="clearAll()" style="padding:4px 10px;border:1px solid #e8eaf0;border-radius:20px;
+          background:#fff;font-size:11px;color:#9299ab;cursor:pointer;font-family:'Pretendard',sans-serif;">전체 초기화</button>`
+      : '');
+}
+
+// 채널별 색상
+const CHANNEL_COLORS = [
+  { bg:'#eef1ff', border:'#c5cef5', fg:'#3b5bdb' },
+  { bg:'#e6f8f3', border:'#9fd8ca', fg:'#0a7a5a' },
+  { bg:'#fff4e0', border:'#f7c97a', fg:'#c96a00' },
+  { bg:'#f9f0ff', border:'#d9b8f5', fg:'#7b3fc2' },
+  { bg:'#fff0f3', border:'#f5aab8', fg:'#c91e3a' },
+];
+const channelColorMap = {};
+let colorIdx = 0;
+function getChannelColor(ch) {
+  if (!channelColorMap[ch]) {
+    channelColorMap[ch] = CHANNEL_COLORS[colorIdx % CHANNEL_COLORS.length];
+    colorIdx++;
+  }
+  return channelColorMap[ch];
+}
+
+function removeFile(idx) {
+  if (!confirm(LOADED_FILES[idx].name + ' 데이터를 제거할까요?\n전체 초기화 후 다시 업로드됩니다.')) return;
+  clearAll();
+}
+
+function clearAll() {
+  RAW = []; LOADED_FILES = []; AGG = {};
+  channelColorMap; colorIdx = 0;
+  currentChannel = '';
+  document.getElementById('fileChips').innerHTML = '';
+  document.getElementById('uploadScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+// ── 집계 ──
+function buildAggregated() {
+  AGG = {};
+  RAW.forEach(r => {
+    const channel = r.__channel || '';
+    const id = (r['광고 ID'] || r['광고 이름']) + '|' + channel;
+    const date = r['일'] ? String(r['일']).substring(0, 10) : '';
+
+    if (!AGG[id]) {
+      const rawCampaign = r['캠페인 이름'] || r['캠페인명'] || '';
+      const rawAdset    = r['광고 세트 이름'] || r['광고세트명'] || r['광고세트 이름'] || '';
+      const adName      = r['광고 이름'] || '';
+      const fallbackM   = adName.match(/^\[(.+?)\]/);
+      const fallbackCamp= fallbackM ? fallbackM[1] : '(미분류)';
+      const fallbackBody= adName.replace(/^\[.+?\]\s*/, '');
+      const fallbackAdset = fallbackBody.split('_').slice(0,3).join('_');
+
+      AGG[id] = {
+        name    : adName,
+        id,
+        goal    : r['목표'] || '',
+        campaign: rawCampaign || fallbackCamp,
+        adset   : rawAdset    || fallbackAdset,
+        channel,
+        dates   : [],
+        지출:0, 노출:0, 도달:0,
+        링크클릭:0, 구매:0, 전환값:0, 장바구니:0,
+      };
+    }
+    if (date) AGG[id].dates.push(date);
+    AGG[id].지출     += getNum(r, '지출 금액 (KRW)', '지출 금액');
+    AGG[id].노출     += getNum(r, '노출');
+    AGG[id].도달     += getNum(r, '도달');
+    AGG[id].링크클릭 += getNum(r, '링크 클릭');
+    // 구매: 공식몰='구매', 브스='공유 항목이 포함된 구매'
+    AGG[id].구매     += getNum(r, '구매', '공유 항목이 포함된 구매');
+    // 전환값: 공식몰='구매 전환값', 브스='공유 항목의 구매 전환값'
+    AGG[id].전환값   += getNum(r, '구매 전환값', '공유 항목의 구매 전환값');
+    AGG[id].장바구니 += getNum(r, '공유 항목이 포함된 장바구니에 담기', '장바구니에 담기');
+  });
+  Object.values(AGG).forEach(a => {
+    a.ROAS = a.지출 > 0 ? +(a.전환값 / a.지출).toFixed(2) : 0;
+    a.CPC  = a.링크클릭 > 0 ? Math.round(a.지출 / a.링크클릭) : null;
+    a.CPM  = a.노출 > 0 ? Math.round(a.지출 / a.노출 * 1000) : 0;
+    a.CVR  = a.링크클릭 > 0 ? +(a.구매 / a.링크클릭 * 100).toFixed(2) : 0;
+    // CPA: 구매당 비용 (지출 / 구매수)
+    a.CPA  = a.구매 > 0 ? Math.round(a.지출 / a.구매) : null;
+    a.dateMin = a.dates.length ? a.dates.sort()[0] : '';
+    a.dateMax = a.dates.length ? a.dates[a.dates.length-1] : '';
+  });
+}
+
+// ── 채널 필터 초기화 ──
+function initChannelPills() {
+  const channels = [...new Set(Object.values(AGG).map(a => a.channel).filter(Boolean))].sort();
+  const wrap = document.getElementById('channelPills');
+  wrap.innerHTML = `<div class="ch-pill ch-all ${currentChannel===''?'active':''}" onclick="setChannel('')">전체</div>` +
+    channels.map(ch => {
+      const c = getChannelColor(ch);
+      const active = currentChannel === ch ? 'active' : '';
+      return `<div class="ch-pill ${active}" onclick="setChannel('${ch}')"
+        style="${active ? `background:${c.fg};border-color:${c.fg};color:#fff` : `border-color:${c.border};color:${c.fg};background:${c.bg}`}"
+        >${ch}</div>`;
+    }).join('');
+}
+
+function setChannel(ch) {
+  currentChannel = ch;
+  initChannelPills();
+  populateCampaignDropdown();
+  applyFilters();
+}
+
+// ── 필터 초기화 ──
+function initFilters() {
+  const dates = RAW.map(r => String(r['일']).substring(0,10)).filter(Boolean).sort();
+  if (dates.length) {
+    document.getElementById('dateFrom').value = dates[0];
+    document.getElementById('dateTo').value = dates[dates.length-1];
+  }
+  document.getElementById('dataInfo').textContent =
+    `총 ${Object.keys(AGG).length}개 소재 · ${dates[0] || ''} ~ ${dates[dates.length-1] || ''}`;
+  initChannelPills();
+  populateCampaignDropdown();
+}
+
+function populateCampaignDropdown(selectedCampaign = '') {
+  const base = currentChannel
+    ? Object.values(AGG).filter(a => a.channel === currentChannel)
+    : Object.values(AGG);
+  const campaigns = [...new Set(base.map(a => a.campaign))].sort();
+  const sel = document.getElementById('filterCampaign');
+  sel.innerHTML = '<option value="">전체 캠페인</option>' +
+    campaigns.map(c => `<option value="${c}" ${c===selectedCampaign?'selected':''}>${c}</option>`).join('');
+  populateAdsetDropdown(selectedCampaign);
+}
+
+function populateAdsetDropdown(campaign = '') {
+  const base = currentChannel
+    ? Object.values(AGG).filter(a => a.channel === currentChannel)
+    : Object.values(AGG);
+  const rows = campaign ? base.filter(a => a.campaign === campaign) : base;
+  const adsets = [...new Set(rows.map(a => a.adset).filter(Boolean))].sort();
+  const sel = document.getElementById('filterAdset');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">전체 광고세트</option>' +
+    adsets.map(a => `<option value="${a}" ${a===prev?'selected':''}>${a}</option>`).join('');
+}
+
+function onCampaignChange() {
+  populateAdsetDropdown(document.getElementById('filterCampaign').value);
+}
+
+// ── 필터 적용 ──
+function applyFilters() {
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+
+  const filtered = {};
+  RAW.forEach(r => {
+    const channel = r.__channel || '';
+    if (currentChannel && channel !== currentChannel) return;
+
+    const id   = (r['광고 ID'] || r['광고 이름']) + '|' + channel;
+    const date = String(r['일']).substring(0,10);
+    if (from && date < from) return;
+    if (to   && date > to)   return;
+
+    if (!filtered[id]) {
+      const rawCampaign = r['캠페인 이름'] || r['캠페인명'] || '';
+      const rawAdset    = r['광고 세트 이름'] || r['광고세트명'] || r['광고세트 이름'] || '';
+      const adName      = r['광고 이름'] || '';
+      const fallbackM   = adName.match(/^\[(.+?)\]/);
+      const fallbackCamp= fallbackM ? fallbackM[1] : '(미분류)';
+      const fallbackBody= adName.replace(/^\[.+?\]\s*/, '');
+      const fallbackAdset = fallbackBody.split('_').slice(0,3).join('_');
+      filtered[id] = {
+        name:adName, id, goal:r['목표']||'',
+        campaign: rawCampaign || fallbackCamp,
+        adset   : rawAdset    || fallbackAdset,
+        channel,
+        dates:[], 지출:0, 노출:0, 도달:0,
+        링크클릭:0, 구매:0, 전환값:0, 장바구니:0,
+      };
+    }
+    filtered[id].dates.push(date);
+    filtered[id].지출     += getNum(r, '지출 금액 (KRW)', '지출 금액');
+    filtered[id].노출     += getNum(r, '노출');
+    filtered[id].도달     += getNum(r, '도달');
+    filtered[id].링크클릭 += getNum(r, '링크 클릭');
+    filtered[id].구매     += getNum(r, '구매', '공유 항목이 포함된 구매');
+    filtered[id].전환값   += getNum(r, '구매 전환값', '공유 항목의 구매 전환값');
+    filtered[id].장바구니 += getNum(r, '공유 항목이 포함된 장바구니에 담기', '장바구니에 담기');
+  });
+
+  Object.values(filtered).forEach(a => {
+    a.ROAS = a.지출 > 0 ? +(a.전환값/a.지출).toFixed(2) : 0;
+    a.CPC  = a.링크클릭>0 ? Math.round(a.지출/a.링크클릭) : null;
+    a.CPM  = a.노출>0 ? Math.round(a.지출/a.노출*1000) : 0;
+    a.CVR  = a.링크클릭>0 ? +(a.구매/a.링크클릭*100).toFixed(2) : 0;
+    a.CPA  = a.구매>0 ? Math.round(a.지출/a.구매) : null;
+  });
+
+  let base = Object.values(filtered);
+  const selCampaign = document.getElementById('filterCampaign').value;
+  const selAdset    = document.getElementById('filterAdset').value;
+  if (selCampaign) base = base.filter(r => r.campaign === selCampaign);
+  if (selAdset)    base = base.filter(r => r.adset    === selAdset);
+  FILTERED = base;
+
+  renderKPIs();
+  renderChartPie();
+  renderTab(currentTab);
+}
+
+function setTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const map = {ALL:0,'OUTCOME_SALES':1,'LINK_CLICKS':2,'OUTCOME_AWARENESS':3};
+  document.querySelectorAll('.tab')[map[tab]]?.classList.add('active');
+  renderTab(tab);
+}
+
+// ── KPIs ──
+function renderKPIs() {
+  const data = FILTERED;
+  const totalSpend  = data.reduce((s,r)=>s+r.지출, 0);
+  const totalImp    = data.reduce((s,r)=>s+r.노출, 0);
+  const totalClick  = data.reduce((s,r)=>s+r.링크클릭, 0);
+  const totalPurch  = data.reduce((s,r)=>s+r.구매, 0);
+  const totalConv   = data.reduce((s,r)=>s+r.전환값, 0);
+  const roas        = totalSpend > 0 ? (totalConv/totalSpend).toFixed(2) : 0;
+  const cpc         = totalClick > 0 ? Math.round(totalSpend/totalClick) : '-';
+  const cpm         = totalImp   > 0 ? Math.round(totalSpend/totalImp*1000) : '-';
+  const cpa         = totalPurch > 0 ? Math.round(totalSpend/totalPurch) : '-';
+
+  document.getElementById('kpiRow').innerHTML = [
+    { label:'총 지출',     value: '₩'+fmtNum(totalSpend),                          sub: `${FILTERED.length}개 소재` },
+    { label:'총 노출',     value: fmtNum(totalImp),                                 sub:'impressions' },
+    { label:'링크 클릭',   value: fmtNum(totalClick),                               sub:'link clicks' },
+    { label:'구매 수',     value: fmtNum(totalPurch),                               sub:'conversions' },
+    { label:'구매당 비용', value: cpa === '-' ? '-' : '₩'+fmtNum(cpa),             sub:'cost per purchase' },
+    { label:'전체 ROAS',   value: roas+'x',                                         sub:'return on ad spend' },
+    { label:'평균 CPC',    value: cpc === '-' ? '-' : '₩'+fmtNum(cpc),             sub:'cost per click' },
+    { label:'평균 CPM',    value: cpm === '-' ? '-' : '₩'+fmtNum(cpm),             sub:'per 1,000 impr.' },
+  ].map(k => `
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+}
+
+// ── PIE CHART ──
+function renderChartPie() {
+  const goals  = ['OUTCOME_SALES','LINK_CLICKS','OUTCOME_AWARENESS'];
+  const labels = ['구매 전환','트래픽','인지도'];
+  const colors = ['#3b5bdb','#0ca678','#e67700'];
+  const values = goals.map(g => FILTERED.filter(r=>r.goal===g).reduce((s,r)=>s+r.지출,0));
+
+  if (chartPie) chartPie.destroy();
+  chartPie = new Chart(document.getElementById('chartPie'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'right', labels:{ font:{size:11, family:'Pretendard'}, boxWidth:10, padding:12 } },
+        tooltip: { callbacks: { label: ctx => {
+          const total = values.reduce((a,b)=>a+b,0);
+          return ` ₩${fmtNum(ctx.raw)} (${total>0?((ctx.raw/total)*100).toFixed(1):0}%)`;
+        }}}
+      },
+      cutout: '62%',
+    }
+  });
+}
+
+// ── BAR CHART ──
+function renderChartBar(items, metric, color) {
+  const top5 = items.slice(0, 5);
+  const labels = top5.map(r => shortName(r.name));
+  const values = top5.map(r => r[metric] || 0);
+
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chartBar'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: color+'cc', borderColor: color, borderWidth: 1, borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => ` ${fmtNum(ctx.raw)}` } } },
+      scales: {
+        x: { grid:{ color:'#f0f0f5' }, ticks:{ font:{size:10, family:'Pretendard'} } },
+        y: { ticks:{ font:{size:10, family:'Pretendard'} } }
+      }
+    }
+  });
+}
+
+// ── RENDER TAB ──
+function renderTab(tab) {
+  const topN   = parseInt(document.getElementById('topN').value) || 5;
+  const metric = document.getElementById('sortMetric').value;
+  const asc    = ['CPC','CPM','CPA'].includes(metric);
+
+  let data = tab === 'ALL' ? FILTERED : FILTERED.filter(r => r.goal === tab);
+  const sorted = [...data].sort((a,b) => {
+    const va = a[metric] ?? (asc ? Infinity : -Infinity);
+    const vb = b[metric] ?? (asc ? Infinity : -Infinity);
+    return asc ? va - vb : vb - va;
+  });
+  const top = sorted.slice(0, topN);
+
+  const meta = {
+    ALL:              { label:'전체 소재',    badge:'ALL',  badgeClass:'badge-all',       color:'#5a5f72' },
+    OUTCOME_SALES:    { label:'구매 전환 소재', badge:'구매', badgeClass:'badge-sales',     color:'#3b5bdb' },
+    LINK_CLICKS:      { label:'트래픽 소재',   badge:'트래픽', badgeClass:'badge-traffic',  color:'#0ca678' },
+    OUTCOME_AWARENESS:{ label:'인지도 소재',   badge:'인지도', badgeClass:'badge-awareness',color:'#e67700' },
+  }[tab];
+
+  document.getElementById('sectionTitle').textContent = meta.label;
+  document.getElementById('sectionBadge').className = `section-badge ${meta.badgeClass}`;
+  document.getElementById('sectionBadge').textContent = meta.badge;
+  document.getElementById('sectionDesc').textContent =
+    `총 ${data.length}개 소재 중 상위 ${Math.min(topN, data.length)}개 · 정렬: ${metric}`;
+  document.getElementById('footerLeft').textContent =
+    `데이터 기간: ${document.getElementById('dateFrom').value} ~ ${document.getElementById('dateTo').value}`;
+
+  const barMetric = ['ROAS','구매'].includes(metric) ? metric : '지출';
+  renderChartBar(top, barMetric, meta.color);
+
+  const maxSpend = Math.max(...top.map(r=>r.지출), 1);
+
+  if (!top.length) {
+    document.getElementById('cardsGrid').innerHTML = '<div class="empty">해당 기간에 데이터가 없습니다</div>';
+    return;
+  }
+
+  document.getElementById('cardsGrid').innerHTML = top.map((r, i) => {
+    const rankClass = i < 3 ? `rank-${i+1}` : '';
+    const rankLabel = ['🥇','🥈','🥉'][i] || `#${i+1}`;
+    const goalColor = { OUTCOME_SALES:'#3b5bdb', LINK_CLICKS:'#0ca678', OUTCOME_AWARENESS:'#e67700' }[r.goal] || '#888';
+    const goalLabel = { OUTCOME_SALES:'구매', LINK_CLICKS:'트래픽', OUTCOME_AWARENESS:'인지도' }[r.goal] || r.goal;
+
+    const roasClass  = r.ROAS >= 3 ? 'good' : r.ROAS > 0 && r.ROAS < 1 ? 'warn' : '';
+    const cpcDisplay = r.CPC != null ? '₩'+fmtNum(r.CPC) : '-';
+    const cpaDisplay = r.CPA != null ? '₩'+fmtNum(r.CPA) : '-';
+    const cpaClass   = r.CPA != null && r.CPA < 10000 ? 'good' : '';
+
+    // 채널 표시
+    const chColor = r.channel ? getChannelColor(r.channel) : null;
+    const chTag = r.channel && chColor
+      ? `<span class="channel-badge" style="background:${chColor.bg};color:${chColor.fg};border:1px solid ${chColor.border};">📍 ${r.channel}</span>`
+      : '';
+
+    // 지표: 구매 캠페인은 4개 (ROAS, 구매수, CPA, CPC)
+    let metricsHtml = '';
+    if (r.goal === 'OUTCOME_SALES') {
+      metricsHtml = `<div class="metrics-grid cols-4">
+        <div class="metric-item"><div class="metric-val ${roasClass}">${r.ROAS ? r.ROAS+'x' : '-'}</div><div class="metric-lbl">ROAS</div></div>
+        <div class="metric-item"><div class="metric-val">${fmtNum(r.구매)}건</div><div class="metric-lbl">구매수</div></div>
+        <div class="metric-item"><div class="metric-val ${cpaClass}">${cpaDisplay}</div><div class="metric-lbl">구매당 비용</div></div>
+        <div class="metric-item"><div class="metric-val">${cpcDisplay}</div><div class="metric-lbl">CPC</div></div>
+      </div>`;
+    } else if (r.goal === 'LINK_CLICKS') {
+      metricsHtml = `<div class="metrics-grid cols-3">
+        <div class="metric-item"><div class="metric-val">${fmtNum(r.링크클릭)}회</div><div class="metric-lbl">링크클릭</div></div>
+        <div class="metric-item"><div class="metric-val">${cpcDisplay}</div><div class="metric-lbl">CPC</div></div>
+        <div class="metric-item"><div class="metric-val">₩${fmtNum(r.CPM)}</div><div class="metric-lbl">CPM</div></div>
+      </div>`;
+    } else {
+      metricsHtml = `<div class="metrics-grid cols-3">
+        <div class="metric-item"><div class="metric-val">${fmtNum(r.노출)}회</div><div class="metric-lbl">노출</div></div>
+        <div class="metric-item"><div class="metric-val">${fmtNum(r.도달)}명</div><div class="metric-lbl">도달</div></div>
+        <div class="metric-item"><div class="metric-val">₩${fmtNum(r.CPM)}</div><div class="metric-lbl">CPM</div></div>
+      </div>`;
+    }
+
+    const spendPct = (r.지출 / maxSpend * 100).toFixed(1);
+
+    return `
+    <div class="creative-card ${rankClass}" draggable="true" data-id="${r.id}">
+      <div class="card-rank">${rankLabel}</div>
+      <div class="card-name">
+        <span class="tag" style="background:${goalColor}1a;color:${goalColor}">${goalLabel}</span>
+        ${r.name}
+      </div>
+      <div class="card-meta">
+        ${chTag}
+        ${r.campaign ? `<span>📁 ${r.campaign}</span>` : ''}
+        ${r.adset    ? `<span>📂 ${r.adset}</span>`    : ''}
+      </div>
+      ${metricsHtml}
+      <div class="bar-wrap">
+        <div class="bar-label-row">
+          <span>지출</span>
+          <span>₩${fmtNum(r.지출)} (${spendPct}%)</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${spendPct}%;background:${goalColor}"></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;text-align:right;font-size:10px;color:var(--ink3);opacity:0.5;">⠿ 드래그해서 비교</div>
+    </div>`;
+  }).join('');
+
+  // 드래그 이벤트 부착
+  attachDragEvents();
+  // 비교함에 이미 있는 카드 표시 복원
+  compareItems.forEach(ci => {
+    document.querySelector(`.creative-card[data-id="${ci.id}"]`)?.classList.add('in-compare');
+  });
+}
+
+// ── HELPERS ──
+function fmtNum(n) {
+  if (n === null || n === undefined) return '-';
+  return Math.round(n).toLocaleString('ko-KR');
+}
+function shortName(name) {
+  return name.replace(/^\[.+?\]\s*/,'').substring(0,22)+'…';
+}
+
+// ── 엔터 단축키 ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyFilters();
+  if (e.key === 'Escape') closeCompareModal();
+});
+
+// ═══════════════════════════════════════════
+// 공유용 내보내기
+// ═══════════════════════════════════════════
+function exportWithData() {
+  if (!RAW.length) return;
+
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = '⏳ 생성 중...';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    try {
+      // 현재 HTML 소스 가져오기
+      let src = document.documentElement.outerHTML;
+
+      // 내장할 데이터 준비
+      const payload = JSON.stringify({
+        raw: RAW,
+        files: LOADED_FILES.map(f => ({ name: f.name, channel: f.channel, count: f.count, added: f.added })),
+        exportedAt: new Date().toISOString(),
+      });
+
+      // __EMBEDDED_DATA__ 마커로 교체하거나, 없으면 스크립트 앞에 삽입
+      const marker = '/* __EMBEDDED_DATA_PLACEHOLDER__ */';
+      const inject = `/* __EMBEDDED_DATA_PLACEHOLDER__ */\n  const __EMBEDDED__ = ${payload};\n  if(__EMBEDDED__) { _loadEmbedded(__EMBEDDED__); }`;
+
+      if (src.includes(marker)) {
+        src = src.replace(marker, inject);
+      } else {
+        // 스크립트 블록 맨 앞에 삽입
+        src = src.replace('// ── STATE ──', `// ── STATE ──\n  /* __EMBEDDED_DATA_PLACEHOLDER__ */`);
+        src = src.replace('/* __EMBEDDED_DATA_PLACEHOLDER__ */', inject);
+      }
+
+      // 내보낸 파일에서는 export 버튼 항상 표시되도록
+      src = src.replace('display: none;\n}', 'display: none;\n}\n');
+
+      // 다운로드
+      const channels = [...new Set(LOADED_FILES.map(f => f.channel))].join('-');
+      const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      const filename = `meta-report_${channels}_${dateStr}.html`;
+
+      const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      btn.textContent = '✓ 다운로드 완료';
+      setTimeout(() => {
+        btn.textContent = '🔗 공유용 내보내기';
+        btn.disabled = false;
+      }, 2000);
+    } catch(e) {
+      btn.textContent = '🔗 공유용 내보내기';
+      btn.disabled = false;
+      alert('내보내기 실패: ' + e.message);
+    }
+  }, 50);
+}
+
+// ── 내장 데이터 자동 로드 ──
+function _loadEmbedded(payload) {
+  // 페이지 로드 직후 실행: 내장 데이터를 RAW/LOADED_FILES에 주입하고 대시보드 바로 표시
+  document.addEventListener('DOMContentLoaded', () => {
+    RAW = payload.raw || [];
+    LOADED_FILES = (payload.files || []).map(f => ({ ...f }));
+
+    if (!RAW.length) return;
+
+    // 채널 색상 복원
+    LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
+
+    buildAggregated();
+    renderFileChips();
+
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('exportBtn').classList.add('visible');
+
+    // 내보낸 버전임을 표시
+    const exportedAt = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString('ko-KR') : '';
+    if (exportedAt) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'position:fixed;top:62px;right:16px;z-index:99;background:#fff;border:1px solid #e8eaf0;border-radius:8px;padding:6px 12px;font-size:11px;color:#9299ab;box-shadow:0 2px 8px rgba(0,0,0,0.08);';
+      notice.innerHTML = `📦 내보낸 데이터 · ${exportedAt} 기준 &nbsp;<span onclick="this.parentNode.remove()" style="cursor:pointer;color:#ccc">✕</span>`;
+      document.body.appendChild(notice);
+    }
+
+    initFilters();
+    applyFilters();
+  });
+}
+
+// ═══════════════════════════════════════════
+// DRAG & COMPARE
+// ═══════════════════════════════════════════
+const COMPARE_COLORS = ['#3b5bdb','#e67700','#0ca678','#c91e3a'];
+let compareItems = []; // array of row objects
+let dragId = null;
+let chartRadar = null;
+
+// ── 카드에 드래그 이벤트 부착 ──
+function attachDragEvents() {
+  document.querySelectorAll('.creative-card[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragId = card.dataset.id;
+      card.classList.add('dragging');
+      document.getElementById('dropHint').classList.add('show');
+      document.getElementById('compareTray').classList.add('visible');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.getElementById('dropHint').classList.remove('show');
+      dragId = null;
+    });
+  });
+}
+
+// ── Tray 드래그 오버 ──
+function trayDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  document.getElementById('compareTray').classList.add('drag-over');
+}
+function trayDragLeave(e) {
+  if (!document.getElementById('compareTray').contains(e.relatedTarget)) {
+    document.getElementById('compareTray').classList.remove('drag-over');
+  }
+}
+function trayDrop(e) {
+  e.preventDefault();
+  document.getElementById('compareTray').classList.remove('drag-over');
+  if (!dragId) return;
+  // 이미 있으면 스킵
+  if (compareItems.find(x => x._cid === dragId)) return;
+  if (compareItems.length >= 4) {
+    shakeEl(document.getElementById('compareTray'));
+    return;
+  }
+  const row = FILTERED.find(r => r.id === dragId);
+  if (row) {
+    compareItems.push(row);
+    renderTray();
+    // 카드에 in-compare 표시
+    document.querySelector(`.creative-card[data-id="${dragId}"]`)?.classList.add('in-compare');
+  }
+}
+
+// ── Tray 렌더 ──
+function renderTray() {
+  const slots = document.getElementById('traySlots');
+  const MAX = 4;
+  const items = [...compareItems];
+  // pad with empty slots up to max(2, items.length+1) but at least 2 visible
+  const showCount = Math.max(2, Math.min(MAX, items.length + 1));
+
+  slots.innerHTML = Array.from({length: showCount}, (_, i) => {
+    const r = items[i];
+    if (!r) {
+      return `<div class="tray-slot">${i === items.length ? '+ 여기에 드롭' : ''}</div>`;
+    }
+    const color = COMPARE_COLORS[i];
+    const chColor = r.channel ? getChannelColor(r.channel) : null;
+    const chTag = chColor ? `<span class="slot-ch" style="background:${chColor.bg};color:${chColor.fg}">${r.channel}</span>` : '';
+    const shortN = r.name.replace(/^\[.+?\]\s*/,'').substring(0, 28);
+    return `
+    <div class="tray-slot filled">
+      ${chTag}
+      <div class="slot-name" style="padding-top:${chColor?'16px':'4px'}">${shortN}</div>
+      <span class="slot-remove" onclick="removeFromTray('${r.id}')">×</span>
+      <div class="slot-dot" style="background:${color}"></div>
+    </div>`;
+  }).join('');
+
+  // 트레이 표시 유지
+  document.getElementById('compareTray').classList.add('visible');
+
+  // 비교하기 버튼 활성화
+  const btn = document.getElementById('btnCompare');
+  if (compareItems.length >= 2) {
+    btn.classList.add('ready');
+    btn.textContent = `📊 비교하기 (${compareItems.length})`;
+  } else {
+    btn.classList.remove('ready');
+    btn.textContent = `📊 비교하기`;
+  }
+}
+
+function removeFromTray(id) {
+  compareItems = compareItems.filter(x => x.id !== id);
+  document.querySelector(`.creative-card[data-id="${id}"]`)?.classList.remove('in-compare');
+  if (compareItems.length === 0) {
+    clearTray();
+  } else {
+    renderTray();
+  }
+}
+
+function clearTray() {
+  compareItems = [];
+  document.querySelectorAll('.creative-card.in-compare').forEach(c => c.classList.remove('in-compare'));
+  document.getElementById('compareTray').classList.remove('visible');
+  document.getElementById('traySlots').innerHTML = '';
+  document.getElementById('btnCompare').classList.remove('ready');
+  document.getElementById('btnCompare').textContent = '📊 비교하기';
+}
+
+function shakeEl(el) {
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shake 0.4s ease';
+  setTimeout(() => el.style.animation = '', 400);
+}
+
+// ═══════════════════════════════════════════
+// COMPARE MODAL
+// ═══════════════════════════════════════════
+function openCompareModal() {
+  if (compareItems.length < 2) return;
+  renderCompareModal();
+  document.getElementById('compareModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeCompareModal() {
+  document.getElementById('compareModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById('compareModalBg')) closeCompareModal();
+}
+
+function renderCompareModal() {
+  const items = compareItems;
+  document.getElementById('modalSubtitle').textContent = `${items.length}개 소재`;
+
+  // ── 지표 정의 ──
+  const allGoals = [...new Set(items.map(r => r.goal))];
+  const isSales = allGoals.includes('OUTCOME_SALES');
+
+  const METRICS = [
+    { key:'지출',    label:'지출',      fmt: v => v != null ? '₩'+fmtNum(v) : '-', raw: r => r.지출,    best:'max' },
+    { key:'노출',    label:'노출',      fmt: v => fmtNum(v),                        raw: r => r.노출,    best:'max' },
+    { key:'링크클릭',label:'링크 클릭', fmt: v => fmtNum(v),                        raw: r => r.링크클릭,best:'max' },
+    { key:'CPC',     label:'CPC',       fmt: v => v != null ? '₩'+fmtNum(v) : '-', raw: r => r.CPC,     best:'min' },
+    { key:'CPM',     label:'CPM',       fmt: v => '₩'+fmtNum(v),                   raw: r => r.CPM,     best:'min' },
+    ...(isSales ? [
+      { key:'구매',  label:'구매수',    fmt: v => fmtNum(v)+'건',                   raw: r => r.구매,    best:'max' },
+      { key:'ROAS',  label:'ROAS',      fmt: v => v ? v+'x' : '-',                  raw: r => r.ROAS,    best:'max' },
+      { key:'CPA',   label:'구매당 비용',fmt: v => v != null ? '₩'+fmtNum(v) : '-',raw: r => r.CPA,     best:'min' },
+    ] : []),
+  ];
+
+  // ── Legend ──
+  document.getElementById('compareLegend').innerHTML = items.map((r, i) => {
+    const short = r.name.replace(/^\[.+?\]\s*/,'').substring(0, 20);
+    return `<div class="legend-item">
+      <div class="legend-dot" style="background:${COMPARE_COLORS[i]}"></div>
+      ${short}${r.name.length > 20 ? '…' : ''}
+    </div>`;
+  }).join('');
+
+  // ── Radar Chart ──
+  const radarMetrics = [
+    { label:'노출', raw: r => r.노출 },
+    { label:'클릭', raw: r => r.링크클릭 },
+    { label:'구매', raw: r => r.구매 },
+    { label:'ROAS', raw: r => r.ROAS || 0 },
+    { label:'지출', raw: r => r.지출 },
+  ];
+  // normalize each axis to 0-100
+  const radarNorm = radarMetrics.map(m => {
+    const vals = items.map(r => m.raw(r) || 0);
+    const mx = Math.max(...vals, 0.001);
+    return { label: m.label, normed: vals.map(v => +(v/mx*100).toFixed(1)) };
+  });
+
+  if (chartRadar) chartRadar.destroy();
+  chartRadar = new Chart(document.getElementById('chartRadar'), {
+    type: 'radar',
+    data: {
+      labels: radarNorm.map(m => m.label),
+      datasets: items.map((r, i) => ({
+        label: r.name.replace(/^\[.+?\]\s*/,'').substring(0,16)+'…',
+        data: radarNorm.map(m => m.normed[i]),
+        backgroundColor: COMPARE_COLORS[i] + '22',
+        borderColor: COMPARE_COLORS[i],
+        borderWidth: 2,
+        pointBackgroundColor: COMPARE_COLORS[i],
+        pointRadius: 3,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false, stepSize: 25 },
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          angleLines: { color: 'rgba(0,0,0,0.06)' },
+          pointLabels: { font: { size: 11, family: 'Pretendard', weight: '700' }, color: '#5a5f72' }
+        }
+      }
+    }
+  });
+
+  // ── Table ──
+  const table = document.getElementById('compareTable');
+
+  // 헤더
+  const nameColor = items.map((r,i) => COMPARE_COLORS[i]);
+  table.innerHTML = `
+  <thead>
+    <tr>
+      <th class="col-name">지표</th>
+      ${items.map((r,i) => {
+        const chColor = r.channel ? getChannelColor(r.channel) : null;
+        const chBadge = chColor ? `<span class="td-ch" style="background:${chColor.bg};color:${chColor.fg}">${r.channel}</span><br>` : '';
+        const short = r.name.replace(/^\[.+?\]\s*/,'');
+        return `<th style="border-bottom:2px solid ${nameColor[i]};">
+          ${chBadge}
+          <span style="color:${nameColor[i]};font-size:11px;font-weight:700;">#${i+1}</span>
+          <span style="color:var(--ink);font-size:10px;font-weight:600;"> ${short.substring(0,22)}${short.length>22?'…':''}</span>
+        </th>`;
+      }).join('')}
+    </tr>
+  </thead>
+  <tbody>
+    ${METRICS.map(m => {
+      const vals = items.map(r => m.raw(r));
+      const numericVals = vals.map(v => (v === null || v === undefined) ? null : Number(v));
+      const validVals = numericVals.filter(v => v !== null && !isNaN(v));
+      const bestVal = validVals.length ? (m.best === 'max' ? Math.max(...validVals) : Math.min(...validVals)) : null;
+      const maxVal  = validVals.length ? Math.max(...validVals.map(Math.abs), 0.001) : 1;
+
+      return `<tr>
+        <td style="font-size:11px;font-weight:700;color:var(--ink3);white-space:nowrap;">${m.label}</td>
+        ${vals.map((v, i) => {
+          const isBest = bestVal !== null && v === bestVal && validVals.length > 1;
+          const cls = isBest ? 'best' : '';
+          const barPct = v != null && !isNaN(v) ? Math.abs(v) / maxVal * 100 : 0;
+          return `<td>
+            <div class="td-val ${cls}">${m.fmt(v)}</div>
+            <div class="td-bar-wrap">
+              <div class="td-bar-fill" style="width:${barPct.toFixed(1)}%;background:${COMPARE_COLORS[i]}88"></div>
+            </div>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    }).join('')}
+  </tbody>`;
+}
+
+// ── shake animation CSS ──
+(function(){
+  const style = document.createElement('style');
+  style.textContent = `@keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-6px)}
+    40%{transform:translateX(6px)}
+    60%{transform:translateX(-4px)}
+    80%{transform:translateX(4px)}
+  }`;
+  document.head.appendChild(style);
+})();
+</script>
+</body>
+</html>
