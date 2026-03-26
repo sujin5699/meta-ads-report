@@ -116,6 +116,83 @@ body {
 }
 .github-btn:hover { border-color: var(--ink2); color: var(--ink); }
 .github-btn.connected { border-color: var(--success); color: var(--success); }
+
+/* ── META API BUTTON ── */
+.meta-api-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--ink2);
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.meta-api-btn:hover { border-color: #1877f2; color: #1877f2; }
+.meta-api-btn.connected { border-color: #1877f2; color: #1877f2; background: #e7f0fd; }
+
+/* ── 소재 썸네일 ── */
+.card-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  margin-bottom: 12px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.card-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.card-thumb-placeholder {
+  color: var(--ink3);
+  font-size: 11px;
+  text-align: center;
+  padding: 16px;
+}
+.card-thumb-loading {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  margin-bottom: 12px;
+}
+.thumb-play-btn {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 36px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 .sync-status {
   font-size: 11px;
   font-weight: 600;
@@ -848,6 +925,9 @@ input[type="number"] { width: 60px; }
   <div class="topbar-right">
     <div id="fileChips" style="display:none;"></div>
     <div id="syncStatus" class="sync-status"></div>
+    <button class="meta-api-btn" id="metaApiBtn" onclick="openMetaModal()" title="Meta API 연동 — 소재 썸네일 자동 로드">
+      📷 소재 이미지
+    </button>
     <button class="github-btn" id="githubBtn" onclick="openGithubModal()" title="GitHub 연동 설정">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       GitHub 연동
@@ -861,6 +941,34 @@ input[type="number"] { width: 60px; }
     <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="loadFile(this)" multiple>
   </div>
 </header>
+
+<!-- META API MODAL -->
+<div class="compare-modal-bg" id="metaModalBg" onclick="closeMetaModalOnBg(event)">
+  <div class="compare-modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">📷 Meta API 연동 — 소재 이미지/영상</div>
+      <div class="btn-modal-close" onclick="closeMetaModal()">✕</div>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div class="gh-field">
+        <label class="gh-label">
+          Meta 액세스 토큰 <span class="gh-required">*</span>
+          <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="gh-link">Graph API Explorer →</a>
+        </label>
+        <input class="gh-input" id="metaToken" type="password" placeholder="EAAxxxxxxxxxxxxxxx">
+        <div class="gh-hint">
+          본인 브라우저에만 저장돼요. Graph API Explorer에서 <b>ads_read</b> 권한으로 발급하세요.<br>
+          단기 토큰(2시간) · 장기 토큰(60일) 모두 사용 가능해요.
+        </div>
+      </div>
+      <div id="metaTestResult" style="display:none;margin-bottom:16px;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:600;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-apply" style="flex:1" onclick="saveMetaToken()">저장 및 썸네일 로드</button>
+        <button class="btn-tray-clear" style="background:var(--bg);color:var(--danger);border-color:var(--danger);opacity:0.7;" onclick="clearMetaToken()">연동 해제</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- GITHUB MODAL -->
 <div class="compare-modal-bg" id="githubModalBg" onclick="closeGithubModalOnBg(event)">
@@ -1654,6 +1762,7 @@ function renderTab(tab) {
     return `
     <div class="creative-card ${rankClass}" draggable="true" data-id="${r.id}">
       <div class="card-rank">${rankLabel}</div>
+      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" class="card-thumb-loading"></div>
       <div class="card-name">
         <span class="tag" style="background:${goalColor}1a;color:${goalColor}">${goalLabel}</span>
         ${r.name}
@@ -1683,6 +1792,8 @@ function renderTab(tab) {
   compareItems.forEach(ci => {
     document.querySelector(`.creative-card[data-id="${ci.id}"]`)?.classList.add('in-compare');
   });
+  // Meta API 썸네일 로드
+  loadThumbnails(top);
 }
 
 // ── HELPERS ──
@@ -1713,6 +1824,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeCompareModal();
     closeGithubModal();
+    closeMetaModal();
   }
 });
 
@@ -2277,6 +2389,180 @@ async function loadFromGithub() {
   }
 }
 
+// ═══════════════════════════════════════════
+// META API — 소재 썸네일
+// ═══════════════════════════════════════════
+let META_TOKEN = '';
+const thumbCache = {}; // adId → { type, url, thumbUrl }
+
+function loadMetaSettings() {
+  try {
+    META_TOKEN = localStorage.getItem('meta_ads_token') || '';
+    if (META_TOKEN) updateMetaBtn(true);
+  } catch(e) {}
+}
+
+function updateMetaBtn(connected) {
+  const btn = document.getElementById('metaApiBtn');
+  if (connected) {
+    btn.classList.add('connected');
+    btn.textContent = '📷 이미지 연동됨';
+  } else {
+    btn.classList.remove('connected');
+    btn.textContent = '📷 소재 이미지';
+  }
+}
+
+function openMetaModal() {
+  document.getElementById('metaToken').value = META_TOKEN;
+  document.getElementById('metaTestResult').style.display = 'none';
+  document.getElementById('metaModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMetaModal() {
+  document.getElementById('metaModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeMetaModalOnBg(e) {
+  if (e.target === document.getElementById('metaModalBg')) closeMetaModal();
+}
+
+async function saveMetaToken() {
+  const token = document.getElementById('metaToken').value.trim();
+  if (!token) { showMetaResult('error', '토큰을 입력해주세요'); return; }
+  showMetaResult('loading', '토큰 확인 중...');
+  try {
+    const res = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${token}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    META_TOKEN = token;
+    localStorage.setItem('meta_ads_token', token);
+    updateMetaBtn(true);
+    showMetaResult('success', `✓ 연결됐어요 (${data.name || data.id}). 썸네일을 불러올게요.`);
+    setTimeout(() => { closeMetaModal(); loadThumbnails(FILTERED); }, 1200);
+  } catch(e) {
+    showMetaResult('error', '연결 실패: ' + e.message);
+  }
+}
+
+function clearMetaToken() {
+  META_TOKEN = '';
+  try { localStorage.removeItem('meta_ads_token'); } catch(e) {}
+  updateMetaBtn(false);
+  closeMetaModal();
+  showToast('Meta API 연동 해제됐어요');
+  // 썸네일 플레이스홀더로 되돌리기
+  document.querySelectorAll('.card-thumb').forEach(el => {
+    el.outerHTML = `<div class="card-thumb-loading"></div>`;
+  });
+}
+
+function showMetaResult(type, msg) {
+  const el = document.getElementById('metaTestResult');
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#e6f8f3' : type === 'error' ? '#fff0f3' : '#eef1ff';
+  el.style.color      = type === 'success' ? '#0a7a5a' : type === 'error' ? '#c91e3a' : '#3b5bdb';
+  el.textContent = msg;
+}
+
+// 광고 ID로 썸네일 fetch — 배치로 처리
+async function loadThumbnails(items) {
+  if (!META_TOKEN || !items.length) {
+    // 토큰 없으면 로딩 shimmer → 빈 플레이스홀더로
+    items.forEach(r => {
+      const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
+      if (el) el.outerHTML = '';
+    });
+    return;
+  }
+
+  // 캐시된 것 먼저 적용
+  items.forEach(r => {
+    if (thumbCache[r.id]) applyThumb(r.id, thumbCache[r.id]);
+  });
+
+  // 미캐시 항목만 API 요청
+  const uncached = items.filter(r => !thumbCache[r.id]);
+  if (!uncached.length) return;
+
+  // Meta는 광고 ID에서 앞부분(순수 숫자)만 필요
+  const adIds = uncached.map(r => {
+    const raw = String(r.id).split('|')[0];
+    return raw.replace(/[^0-9]/g, '');
+  }).filter(Boolean);
+
+  // 배치 요청 (25개씩)
+  for (let i = 0; i < adIds.length; i += 25) {
+    const batch = adIds.slice(i, i + 25);
+    try {
+      const fields = 'id,creative{thumbnail_url,object_story_spec,video_id}';
+      const ids = batch.join(',');
+      const url = `https://graph.facebook.com/v19.0/?ids=${ids}&fields=${fields}&access_token=${META_TOKEN}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) continue;
+
+      for (const adId of Object.keys(data)) {
+        const ad = data[adId];
+        const creative = ad.creative;
+        if (!creative) continue;
+
+        let info = null;
+
+        // 영상 소재
+        if (creative.video_id || creative.object_story_spec?.video_data) {
+          const vidId = creative.video_id ||
+            creative.object_story_spec?.video_data?.video_id;
+          if (vidId) {
+            const vRes = await fetch(
+              `https://graph.facebook.com/v19.0/${vidId}?fields=thumbnails&access_token=${META_TOKEN}`
+            );
+            const vData = await vRes.json();
+            const thumbUrl = vData.thumbnails?.data?.[0]?.uri || creative.thumbnail_url;
+            info = { type: 'video', thumbUrl };
+          }
+        }
+        // 이미지 소재
+        if (!info && creative.thumbnail_url) {
+          info = { type: 'image', thumbUrl: creative.thumbnail_url };
+        }
+
+        if (info) {
+          // 원래 row id 찾기
+          const row = uncached.find(r => String(r.id).split('|')[0].replace(/[^0-9]/g,'') === adId);
+          if (row) {
+            thumbCache[row.id] = info;
+            applyThumb(row.id, info);
+          }
+        }
+      }
+    } catch(e) {
+      console.warn('썸네일 로드 실패:', e);
+    }
+  }
+
+  // 여전히 shimmer인 건 빈칸으로
+  uncached.forEach(r => {
+    const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
+    if (el && el.className === 'card-thumb-loading') el.outerHTML = '';
+  });
+}
+
+function applyThumb(rowId, info) {
+  const elId = 'thumb-' + rowId.replace(/[^a-zA-Z0-9]/g,'_');
+  const el = document.getElementById(elId);
+  if (!el) return;
+
+  const isVideo = info.type === 'video';
+  el.outerHTML = `
+    <div class="card-thumb" id="${elId}">
+      <img src="${info.thumbUrl}" alt="소재 썸네일"
+        onerror="this.parentNode.innerHTML='<div class=\\"card-thumb-placeholder\\">이미지 없음</div>'"
+        loading="lazy">
+      ${isVideo ? '<div class="thumb-play-btn">▶</div>' : ''}
+    </div>`;
+}
+
 // ── localStorage 저장/복원 ──
 function saveToLocal() {
   const tag = document.getElementById('__embedded_data__');
@@ -2319,6 +2605,7 @@ function loadFromLocal() {
 // ── 페이지 로드 시 데이터 복원 (GitHub 우선 → 로컬스토리지 폴백) ──
 (async function init() {
   loadGithubSettings();
+  loadMetaSettings();
   // 내장 데이터(_loadEmbedded)가 이미 처리한 경우 스킵
   const tag = document.getElementById('__embedded_data__');
   if (tag && tag.textContent.trim()) return;
