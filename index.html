@@ -99,6 +99,74 @@ body {
 .export-btn:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
 .export-btn.visible { display: flex; }
 
+/* ── GITHUB SYNC ── */
+.github-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--ink2);
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.github-btn:hover { border-color: var(--ink2); color: var(--ink); }
+.github-btn.connected { border-color: var(--success); color: var(--success); }
+.sync-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink3);
+  white-space: nowrap;
+  display: none;
+}
+.sync-status.visible { display: block; }
+.sync-status.syncing { color: var(--accent); }
+.sync-status.ok      { color: var(--success); }
+.sync-status.err     { color: var(--danger); }
+
+/* ── GITHUB MODAL FIELDS ── */
+.gh-field { margin-bottom: 18px; }
+.gh-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink2);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.gh-required { color: var(--danger); }
+.gh-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  transition: border-color 0.15s;
+}
+.gh-input:focus { outline: none; border-color: var(--accent); }
+.gh-hint {
+  font-size: 11px;
+  color: var(--ink3);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.gh-link {
+  font-size: 10px;
+  color: var(--accent);
+  text-decoration: none;
+  margin-left: 8px;
+  font-weight: 600;
+}
+.gh-link:hover { text-decoration: underline; }
+
 /* ── LAYOUT ── */
 .page { max-width: 1280px; margin: 0 auto; padding: 24px 24px 48px; }
 
@@ -779,6 +847,11 @@ input[type="number"] { width: 60px; }
   <div class="topbar-title">캠페인 소재 성과 대시보드</div>
   <div class="topbar-right">
     <div id="fileChips" style="display:none;"></div>
+    <div id="syncStatus" class="sync-status"></div>
+    <button class="github-btn" id="githubBtn" onclick="openGithubModal()" title="GitHub 연동 설정">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub 연동
+    </button>
     <button class="export-btn" id="exportBtn" onclick="exportWithData()">
       🔗 공유용 내보내기
     </button>
@@ -788,6 +861,42 @@ input[type="number"] { width: 60px; }
     <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="loadFile(this)" multiple>
   </div>
 </header>
+
+<!-- GITHUB MODAL -->
+<div class="compare-modal-bg" id="githubModalBg" onclick="closeGithubModalOnBg(event)">
+  <div class="compare-modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub 연동 설정
+      </div>
+      <div class="btn-modal-close" onclick="closeGithubModal()">✕</div>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div class="gh-field">
+        <label class="gh-label">GitHub 저장소 <span class="gh-required">*</span></label>
+        <div style="display:flex;gap:8px;">
+          <input class="gh-input" id="ghOwner" placeholder="계정명 (예: sujin5699)" style="flex:1">
+          <span style="line-height:36px;color:var(--ink3)">/</span>
+          <input class="gh-input" id="ghRepo" placeholder="저장소명 (예: meta-ads-report)" style="flex:2">
+        </div>
+      </div>
+      <div class="gh-field">
+        <label class="gh-label">
+          Personal Access Token <span class="gh-required">*</span>
+          <a href="https://github.com/settings/tokens/new?scopes=repo&description=meta-ads-dashboard" target="_blank" class="gh-link">토큰 발급하기 →</a>
+        </label>
+        <input class="gh-input" id="ghToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
+        <div class="gh-hint">본인 브라우저에만 저장돼요. 팀원에게는 공유되지 않아요.</div>
+      </div>
+      <div id="ghTestResult" style="display:none;margin-bottom:16px;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:600;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-apply" style="flex:1" onclick="saveGithubSettings()">저장 및 연결 확인</button>
+        <button class="btn-tray-clear" style="background:var(--bg);color:var(--danger);border-color:var(--danger);opacity:0.7;" onclick="clearGithubSettings()">연동 해제</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- UPLOAD SCREEN -->
 <div id="uploadScreen" class="upload-screen">
@@ -1066,6 +1175,8 @@ function processFile(file) {
         : `새로운 데이터가 없어요`;
       showToast(msg);
       buildAggregated();
+      saveToLocal(); // localStorage에 자동 저장
+      syncToGithub(); // GitHub에 동기화 (연동된 경우)
 
       document.getElementById('uploadScreen').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
@@ -1129,6 +1240,7 @@ function clearAll() {
   document.getElementById('fileChips').innerHTML = '';
   document.getElementById('uploadScreen').style.display = 'flex';
   document.getElementById('dashboard').style.display = 'none';
+  try { localStorage.removeItem('meta_ads_raw'); localStorage.removeItem('meta_ads_files'); } catch(e) {}
 }
 
 // ── 집계 ──
@@ -1888,6 +2000,257 @@ function renderCompareModal() {
 
 // ── EMBEDDED DATA ENTRY POINT ──
 _loadEmbedded();
+
+// ═══════════════════════════════════════════
+// GITHUB 연동
+// ═══════════════════════════════════════════
+let GH = { owner:'', repo:'', token:'' };
+
+function loadGithubSettings() {
+  try {
+    const saved = localStorage.getItem('meta_ads_github');
+    if (saved) {
+      GH = JSON.parse(saved);
+      document.getElementById('ghOwner').value = GH.owner || '';
+      document.getElementById('ghRepo').value  = GH.repo  || '';
+      document.getElementById('ghToken').value = GH.token || '';
+      updateGithubBtn();
+    }
+  } catch(e) {}
+}
+
+function updateGithubBtn() {
+  const btn = document.getElementById('githubBtn');
+  if (GH.owner && GH.repo && GH.token) {
+    btn.classList.add('connected');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> ✓ 연동됨`;
+  } else {
+    btn.classList.remove('connected');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub 연동`;
+  }
+}
+
+function openGithubModal() {
+  loadGithubSettings();
+  document.getElementById('ghTestResult').style.display = 'none';
+  document.getElementById('githubModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeGithubModal() {
+  document.getElementById('githubModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeGithubModalOnBg(e) {
+  if (e.target === document.getElementById('githubModalBg')) closeGithubModal();
+}
+
+async function saveGithubSettings() {
+  const owner = document.getElementById('ghOwner').value.trim();
+  const repo  = document.getElementById('ghRepo').value.trim();
+  const token = document.getElementById('ghToken').value.trim();
+  const result = document.getElementById('ghTestResult');
+
+  if (!owner || !repo || !token) {
+    showGhResult('error', '모든 항목을 입력해주세요');
+    return;
+  }
+
+  showGhResult('loading', '연결 확인 중...');
+
+  // repo 접근 권한 테스트
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: { Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      showGhResult('error', `연결 실패: ${err.message}`);
+      return;
+    }
+  } catch(e) {
+    showGhResult('error', '네트워크 오류: ' + e.message);
+    return;
+  }
+
+  GH = { owner, repo, token };
+  try { localStorage.setItem('meta_ads_github', JSON.stringify(GH)); } catch(e) {}
+  updateGithubBtn();
+  showGhResult('success', `✓ ${owner}/${repo} 연결됐어요. 이제 데이터 업로드 시 자동 동기화돼요.`);
+
+  // 현재 데이터가 있으면 바로 업로드
+  if (RAW.length) {
+    setTimeout(() => { closeGithubModal(); syncToGithub(); }, 1200);
+  } else {
+    setTimeout(closeGithubModal, 1500);
+  }
+}
+
+function clearGithubSettings() {
+  if (!confirm('GitHub 연동을 해제할까요?')) return;
+  GH = { owner:'', repo:'', token:'' };
+  try { localStorage.removeItem('meta_ads_github'); } catch(e) {}
+  document.getElementById('ghOwner').value = '';
+  document.getElementById('ghRepo').value  = '';
+  document.getElementById('ghToken').value = '';
+  updateGithubBtn();
+  closeGithubModal();
+  showToast('GitHub 연동 해제됐어요');
+}
+
+function showGhResult(type, msg) {
+  const el = document.getElementById('ghTestResult');
+  el.style.display = 'block';
+  el.style.background = type === 'success' ? '#e6f8f3' : type === 'error' ? '#fff0f3' : '#eef1ff';
+  el.style.color      = type === 'success' ? '#0a7a5a' : type === 'error' ? '#c91e3a' : '#3b5bdb';
+  el.textContent = msg;
+}
+
+function setSyncStatus(type, msg) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status visible ' + type;
+  el.textContent = msg;
+  if (type === 'ok') setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+// GitHub에 data.json 업로드
+async function syncToGithub() {
+  if (!GH.owner || !GH.repo || !GH.token) return;
+  setSyncStatus('syncing', '⟳ GitHub 동기화 중...');
+  try {
+    const path = 'data.json';
+    const apiUrl = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}`;
+    const headers = {
+      'Authorization': `Bearer ${GH.token}`,
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    // 기존 파일 SHA 확인 (업데이트 시 필요)
+    let sha = null;
+    const existing = await fetch(apiUrl, { headers });
+    if (existing.ok) {
+      const data = await existing.json();
+      sha = data.sha;
+    }
+
+    // 데이터 직렬화 및 base64 인코딩
+    const payload = JSON.stringify({ raw: RAW, files: LOADED_FILES, updatedAt: new Date().toISOString() });
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+
+    const body = { message: `data: sync ${new Date().toISOString().slice(0,10)}`, content: encoded };
+    if (sha) body.sha = sha;
+
+    const res = await fetch(apiUrl, { method: 'PUT', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message);
+    }
+    setSyncStatus('ok', '✓ 동기화 완료');
+    showToast('GitHub에 저장됐어요');
+  } catch(e) {
+    setSyncStatus('err', '⚠ 동기화 실패: ' + e.message);
+    console.error('GitHub sync error:', e);
+  }
+}
+
+// GitHub에서 data.json 불러오기 (팀원 포함 모든 접속자)
+async function loadFromGithub() {
+  // 내장 데이터가 있으면 건너뜀
+  const tag = document.getElementById('__embedded_data__');
+  if (tag && tag.textContent.trim()) return;
+
+  // repo 정보 파악: 연동 설정이 있으면 그걸 쓰고, 없으면 현재 URL에서 추정
+  let owner = GH.owner, repo = GH.repo;
+
+  if (!owner || !repo) {
+    // GitHub Pages URL 패턴: https://{owner}.github.io/{repo}/...
+    const m = location.hostname.match(/^(.+)\.github\.io$/);
+    if (m) {
+      owner = m[1];
+      repo  = location.pathname.split('/').filter(Boolean)[0] || '';
+    }
+  }
+  if (!owner || !repo) return;
+
+  try {
+    // raw URL은 인증 없이 public repo 접근 가능
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/data.json`;
+    const res = await fetch(url + '?t=' + Date.now()); // 캐시 방지
+    if (!res.ok) return;
+    const payload = await res.json();
+
+    if (!payload.raw || !payload.raw.length) return;
+
+    RAW          = payload.raw;
+    LOADED_FILES = payload.files || [];
+    LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
+    buildAggregated();
+    renderFileChips();
+
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('exportBtn').classList.add('visible');
+    updateGithubBtn();
+
+    const updatedAt = payload.updatedAt
+      ? new Date(payload.updatedAt).toLocaleDateString('ko-KR') : '';
+    initFilters();
+    applyFilters();
+    if (updatedAt) showToast('최신 데이터 로드 완료 · ' + updatedAt + ' 기준');
+  } catch(e) {
+    // 조용히 실패 — 로컬스토리지로 폴백
+    console.log('GitHub 데이터 없음, 로컬 복원 시도');
+  }
+}
+
+// ── localStorage 저장/복원 ──
+function saveToLocal() {
+  // 공유용 내보낸 파일(내장 데이터 있음)에서는 저장 안 함
+  const tag = document.getElementById('__embedded_data__');
+  if (tag && tag.textContent.trim()) return;
+  try {
+    localStorage.setItem('meta_ads_raw', JSON.stringify(RAW));
+    localStorage.setItem('meta_ads_files', JSON.stringify(LOADED_FILES));
+  } catch(e) {
+    // 용량 초과 등 무시
+    console.warn('localStorage 저장 실패:', e);
+  }
+}
+
+function loadFromLocal() {
+  // 공유용 내보낸 파일이면 건너뜀 (_loadEmbedded가 처리)
+  const tag = document.getElementById('__embedded_data__');
+  if (tag && tag.textContent.trim()) return;
+  try {
+    const rawStr   = localStorage.getItem('meta_ads_raw');
+    const filesStr = localStorage.getItem('meta_ads_files');
+    if (!rawStr) return;
+    RAW          = JSON.parse(rawStr);
+    LOADED_FILES = JSON.parse(filesStr || '[]');
+    if (!RAW.length) return;
+    LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
+    buildAggregated();
+    renderFileChips();
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('exportBtn').classList.add('visible');
+    initFilters();
+    applyFilters();
+    showToast('이전 데이터를 불러왔어요 · ' + RAW.length.toLocaleString() + '행');
+  } catch(e) {
+    console.warn('localStorage 복원 실패:', e);
+  }
+}
+
+// ── 페이지 로드 시 데이터 복원 (GitHub 우선 → 로컬스토리지 폴백) ──
+(async function init() {
+  loadGithubSettings();
+  // 내장 데이터(_loadEmbedded)가 이미 처리한 경우 스킵
+  const tag = document.getElementById('__embedded_data__');
+  if (tag && tag.textContent.trim()) return;
+  await loadFromGithub();        // GitHub에서 최신 데이터 시도
+  if (!RAW.length) loadFromLocal(); // 실패 시 localStorage 폴백
+})();
 </script>
 </body>
 </html>
