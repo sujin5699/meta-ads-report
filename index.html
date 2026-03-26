@@ -149,16 +149,18 @@ body {
   justify-content: center;
 }
 .card-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   display: block;
+  border-radius: 4px;
 }
 .card-thumb video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   display: block;
 }
 .card-thumb-placeholder {
@@ -630,10 +632,86 @@ input[type="number"] { width: 60px; }
 .drag-hint-close:hover { opacity: 1; }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 700px) {
-  .chart-row { grid-template-columns: 1fr; }
-  .cards-grid { grid-template-columns: 1fr; }
-  .filter-bar { flex-direction: column; align-items: flex-start; }
+/* ── RESPONSIVE / MOBILE ── */
+@media (max-width: 768px) {
+  /* 헤더 */
+  .topbar { padding: 0 14px; gap: 8px; height: 52px; }
+  .topbar-title { display: none; }
+  .topbar-sep { display: none; }
+  .topbar-right { gap: 6px; }
+  .upload-btn { padding: 6px 10px; font-size: 11px; }
+  .export-btn  { padding: 6px 10px; font-size: 11px; }
+  .github-btn  { padding: 6px 10px; font-size: 11px; }
+  .meta-api-btn { padding: 6px 10px; font-size: 11px; }
+
+  /* 레이아웃 */
+  .page { padding: 14px 12px 80px; }
+
+  /* 필터바 */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .filter-group { flex-wrap: wrap; gap: 6px; }
+  .filter-sep { display: none; }
+  .filter-label { min-width: 48px; }
+  select, input[type="date"] { font-size: 13px; padding: 8px 10px; flex: 1; }
+  input[type="number"] { width: 56px; }
+  .ch-pill { padding: 6px 12px; font-size: 12px; }
+  .btn-apply { width: 100%; padding: 10px; font-size: 13px; }
+  #searchQuery { width: 100% !important; font-size: 13px; }
+  #dataInfo { font-size: 11px; }
+
+  /* KPI 카드 */
+  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi-card { padding: 12px 14px; }
+  .kpi-value { font-size: 18px; }
+
+  /* 차트 */
+  .chart-row { grid-template-columns: 1fr; gap: 10px; }
+  .chart-canvas-wrap { height: 180px; }
+
+  /* 탭 */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { padding: 10px 14px; font-size: 12px; white-space: nowrap; }
+
+  /* 소재 카드 */
+  .cards-grid { grid-template-columns: 1fr; gap: 10px; }
+  .metrics-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .metric-val { font-size: 14px; }
+  .metrics-grid.cols-4 .metric-val { font-size: 13px; }
+
+  /* 비교 트레이 */
+  .compare-tray { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  .tray-slots { gap: 6px; }
+  .tray-slot { width: 140px; height: 46px; }
+  .tray-actions { width: 100%; display: flex; gap: 6px; }
+  .btn-compare { flex: 1; }
+  .btn-tray-clear { flex-shrink: 0; }
+
+  /* 비교 모달 */
+  .compare-modal { max-height: 95vh; border-radius: 16px 16px 0 0; }
+  .compare-layout { grid-template-columns: 1fr; }
+  .compare-radar-wrap { height: 220px; }
+  .modal-body { padding: 16px; }
+  .modal-header { padding: 16px 16px 12px; }
+
+  /* 드래그 힌트 배너 */
+  .drag-hint-banner { font-size: 11px; padding: 8px 12px; }
+
+  /* 업로드 화면 */
+  .upload-zone { width: calc(100vw - 32px); padding: 36px 24px; }
+  .upload-title { font-size: 15px; }
+  .upload-sub { font-size: 12px; }
+}
+
+@media (max-width: 420px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-value { font-size: 16px; }
+  .topbar-logo { font-size: 13px; }
+  .tray-slot { width: 120px; }
 }
 
 /* ── DRAG ── */
@@ -1891,6 +1969,9 @@ function _loadEmbedded() {
   document.getElementById('exportBtn').classList.add('visible');
   document.getElementById('fileInput').style.display = 'none';
   document.querySelector('.upload-btn').style.display = 'none';
+  document.getElementById('githubBtn').style.display = 'none';
+  document.getElementById('metaApiBtn').style.display = 'none';
+  document.getElementById('syncStatus').style.display = 'none';
   const exportedAt = payload.exportedAt
   if (exportedAt) {
     const notice = document.createElement('div');
