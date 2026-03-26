@@ -1313,7 +1313,37 @@ function setChannel(ch) {
   currentChannel = ch;
   initChannelPills();
   populateCampaignDropdown();
+  updateDateRange(ch); // 채널에 맞는 날짜 범위로 업데이트
   applyFilters();
+}
+
+// 채널별 실제 데이터 날짜 범위로 min/max 및 값 설정
+function updateDateRange(ch) {
+  const rows = ch
+    ? RAW.filter(r => (r.__channel || '') === ch)
+    : RAW;
+  const dates = rows.map(r => String(r['일']).substring(0,10)).filter(Boolean).sort();
+  if (!dates.length) return;
+
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
+
+  const fromEl = document.getElementById('dateFrom');
+  const toEl   = document.getElementById('dateTo');
+
+  // min/max 설정 → 캘린더에서 범위 밖 날짜 비활성화
+  fromEl.min = minDate;
+  fromEl.max = maxDate;
+  toEl.min   = minDate;
+  toEl.max   = maxDate;
+
+  // 현재 선택된 값이 새 범위를 벗어나면 범위 내로 조정
+  if (!fromEl.value || fromEl.value < minDate || fromEl.value > maxDate) {
+    fromEl.value = minDate;
+  }
+  if (!toEl.value || toEl.value > maxDate || toEl.value < minDate) {
+    toEl.value = maxDate;
+  }
 }
 
 // ── 필터 초기화 ──
@@ -1321,7 +1351,11 @@ function initFilters() {
   const dates = RAW.map(r => String(r['일']).substring(0,10)).filter(Boolean).sort();
   if (dates.length) {
     document.getElementById('dateFrom').value = dates[0];
-    document.getElementById('dateTo').value = dates[dates.length-1];
+    document.getElementById('dateTo').value   = dates[dates.length-1];
+    document.getElementById('dateFrom').min   = dates[0];
+    document.getElementById('dateFrom').max   = dates[dates.length-1];
+    document.getElementById('dateTo').min     = dates[0];
+    document.getElementById('dateTo').max     = dates[dates.length-1];
   }
   document.getElementById('dataInfo').textContent =
     `총 ${Object.keys(AGG).length}개 소재 · ${dates[0] || ''} ~ ${dates[dates.length-1] || ''}`;
