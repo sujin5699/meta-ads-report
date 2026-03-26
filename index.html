@@ -2633,23 +2633,32 @@ function applyThumb(rowId, info) {
   const el = document.getElementById(elId);
   if (!el) return;
 
-  const isVideo = info.type === 'video';
   const wrap = document.createElement('div');
-  wrap.className = 'card-thumb';
   wrap.id = elId;
+  wrap.style.cssText = `
+    width:100%; aspect-ratio:1/1; border-radius:8px; overflow:hidden;
+    background:#f0f0f5; margin-bottom:12px; position:relative;
+    display:flex; align-items:center; justify-content:center;
+  `;
 
   const img = document.createElement('img');
   img.src = info.thumbUrl;
   img.alt = '소재 썸네일';
   img.loading = 'lazy';
+  img.style.cssText = 'width:100%; height:100%; object-fit:contain; display:block;';
   img.onerror = function() {
-    this.parentNode.innerHTML = '<div class="card-thumb-placeholder">이미지 없음</div>';
+    wrap.innerHTML = '<div style="color:#9299ab;font-size:11px;text-align:center;padding:16px;">이미지 없음</div>';
   };
   wrap.appendChild(img);
 
-  if (isVideo) {
+  if (info.type === 'video') {
     const play = document.createElement('div');
-    play.className = 'thumb-play-btn';
+    play.style.cssText = `
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:36px; height:36px; background:rgba(0,0,0,0.55); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:14px; pointer-events:none;
+    `;
     play.textContent = '▶';
     wrap.appendChild(play);
   }
