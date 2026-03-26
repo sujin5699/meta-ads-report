@@ -1836,7 +1836,7 @@ function renderTab(tab) {
     return `
     <div class="creative-card ${rankClass}" draggable="true" data-id="${r.id}">
       <div class="card-rank">${rankLabel}</div>
-      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" class="card-thumb-loading"></div>
+      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="width:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;"><div style="position:relative;width:100%;padding-bottom:100%;height:0;background:linear-gradient(90deg,#e8eaf0 25%,#f7f8fc 50%,#e8eaf0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;"></div></div>
       <div class="card-name">
         <span class="tag" style="background:${goalColor}1a;color:${goalColor}">${goalLabel}</span>
         ${r.name}
@@ -2573,7 +2573,7 @@ async function loadThumbnails(items) {
   if (!META_TOKEN) {
     items.forEach(r => {
       const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
-      if (el && el.className === 'card-thumb-loading') el.outerHTML = '';
+      if (el && el.querySelector && !el.querySelector('img')) el.outerHTML = '';
     });
     return;
   }
@@ -2624,7 +2624,7 @@ async function loadThumbnails(items) {
   // 4) 여전히 shimmer인 건 제거
   items.forEach(r => {
     const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
-    if (el && el.className === 'card-thumb-loading') el.outerHTML = '';
+    if (el && el.querySelector && !el.querySelector('img')) el.outerHTML = '';
   });
 }
 
@@ -2633,9 +2633,13 @@ function applyThumb(rowId, info) {
   const el = document.getElementById(elId);
   if (!el) return;
 
-  const wrap = document.createElement('div');
-  wrap.id = elId;
-  wrap.style.cssText = 'width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#f0f0f5;margin-bottom:12px;position:relative;';
+  // padding-bottom:100% = 정사각형 비율 고정 (aspect-ratio 폴백 없이 확실하게 동작)
+  const outer = document.createElement('div');
+  outer.id = elId;
+  outer.style.cssText = 'width:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
+
+  const inner = document.createElement('div');
+  inner.style.cssText = 'position:relative;width:100%;padding-bottom:100%;height:0;overflow:hidden;';
 
   const img = document.createElement('img');
   img.src = info.thumbUrl;
@@ -2643,18 +2647,19 @@ function applyThumb(rowId, info) {
   img.loading = 'lazy';
   img.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;';
   img.onerror = function() {
-    wrap.innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#9299ab;font-size:11px;">이미지 없음</div>';
+    inner.innerHTML = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9299ab;font-size:11px;">이미지 없음</div>';
   };
-  wrap.appendChild(img);
+  inner.appendChild(img);
 
   if (info.type === 'video') {
     const play = document.createElement('div');
-    play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:rgba(0,0,0,0.55);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;pointer-events:none;';
+    play.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:rgba(0,0,0,0.55);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;pointer-events:none;z-index:1;';
     play.textContent = '▶';
-    wrap.appendChild(play);
+    inner.appendChild(play);
   }
 
-  el.replaceWith(wrap);
+  outer.appendChild(inner);
+  el.replaceWith(outer);
 }
 
 // ── localStorage 저장/복원 ──
