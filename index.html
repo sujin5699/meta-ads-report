@@ -428,6 +428,30 @@ input[type="number"] { width: 60px; }
   align-items: center;
 }
 
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1d27;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* ── DRAG HINT BANNER ── */
 .drag-hint-banner {
   display: flex;
@@ -904,6 +928,9 @@ input[type="number"] { width: 60px; }
 </div>
 </div>
 
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
 <!-- DROP HINT -->
 <div class="drop-hint" id="dropHint">📊 하단 비교함에 드롭하세요</div>
 
@@ -1005,16 +1032,39 @@ function processFile(file) {
       // 채널 태깅
       newRows.forEach(r => { r.__channel = channel; });
 
-      // 누적 + 중복 제거 (광고ID + 일 + 채널 기준)
-      const existingKeys = new Set(RAW.map(r => (r['광고 ID']||r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel||'')));
-      const added = newRows.filter(r => {
+      // 누적 + 중복 시 덮어쓰기 (광고ID + 일 + 채널 기준)
+      const existingKeyIndex = {};
+      RAW.forEach((r, i) => {
         const key = (r['광고 ID']||r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel||'');
-        return !existingKeys.has(key);
+        existingKeyIndex[key] = i;
       });
-      RAW = [...RAW, ...added];
 
-      LOADED_FILES.push({ name: file.name, channel, count: newRows.length, added: added.length });
+      let overwritten = 0;
+      const toAdd = [];
+      newRows.forEach(r => {
+        const key = (r['광고 ID']||r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel||'');
+        if (key in existingKeyIndex) {
+          RAW[existingKeyIndex[key]] = r; // 덮어쓰기
+          overwritten++;
+        } else {
+          toAdd.push(r);
+        }
+      });
+      RAW = [...RAW, ...toAdd];
+      const added = toAdd.length;
+
+      LOADED_FILES.push({ name: file.name, channel, count: newRows.length, added, overwritten });
       renderFileChips();
+
+      // 업로드 결과 토스트
+      const msg = added > 0 && overwritten > 0
+        ? `+${added.toLocaleString()}행 추가 · ${overwritten.toLocaleString()}행 갱신`
+        : added > 0
+        ? `+${added.toLocaleString()}행 추가됐어요`
+        : overwritten > 0
+        ? `${overwritten.toLocaleString()}행 최신 데이터로 갱신됐어요`
+        : `새로운 데이터가 없어요`;
+      showToast(msg);
       buildAggregated();
 
       document.getElementById('uploadScreen').style.display = 'none';
@@ -1278,14 +1328,15 @@ function renderKPIs() {
   const cpa         = totalPurch > 0 ? Math.round(totalSpend/totalPurch) : '-';
 
   document.getElementById('kpiRow').innerHTML = [
-    { label:'총 지출',     value: '₩'+fmtNum(totalSpend),                          sub: `${FILTERED.length}개 소재` },
-    { label:'총 노출',     value: fmtNum(totalImp),                                 sub:'impressions' },
-    { label:'링크 클릭',   value: fmtNum(totalClick),                               sub:'link clicks' },
-    { label:'구매 수',     value: fmtNum(totalPurch),                               sub:'conversions' },
-    { label:'구매당 비용', value: cpa === '-' ? '-' : '₩'+fmtNum(cpa),             sub:'cost per purchase' },
-    { label:'전체 ROAS',   value: roas+'x',                                         sub:'return on ad spend' },
-    { label:'평균 CPC',    value: cpc === '-' ? '-' : '₩'+fmtNum(cpc),             sub:'cost per click' },
-    { label:'평균 CPM',    value: cpm === '-' ? '-' : '₩'+fmtNum(cpm),             sub:'per 1,000 impr.' },
+    { label:'총 지출',       value: '₩'+fmtNum(totalSpend),                      sub: `${FILTERED.length}개 소재` },
+    { label:'총 노출',       value: fmtNum(totalImp),                             sub:'impressions' },
+    { label:'링크 클릭',     value: fmtNum(totalClick),                           sub:'link clicks' },
+    { label:'구매 수',       value: fmtNum(totalPurch),                           sub:'conversions' },
+    { label:'구매전환 금액', value: totalConv > 0 ? '₩'+fmtNum(totalConv) : '-', sub:'purchase conversion value' },
+    { label:'구매당 비용',   value: cpa === '-' ? '-' : '₩'+fmtNum(cpa),         sub:'cost per purchase' },
+    { label:'전체 ROAS',     value: roas+'x',                                     sub:'return on ad spend' },
+    { label:'평균 CPC',      value: cpc === '-' ? '-' : '₩'+fmtNum(cpc),         sub:'cost per click' },
+    { label:'평균 CPM',      value: cpm === '-' ? '-' : '₩'+fmtNum(cpm),         sub:'per 1,000 impr.' },
   ].map(k => `
     <div class="kpi-card">
       <div class="kpi-label">${k.label}</div>
@@ -1470,6 +1521,15 @@ function shortName(name) {
 
 function dismissDragHint() {
   document.getElementById('dragHintBanner').classList.add('hidden');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
 // ── 엔터 단축키 ──
