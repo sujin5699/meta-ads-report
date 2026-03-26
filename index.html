@@ -978,6 +978,7 @@ input[type="number"] { width: 60px; }
         <option value="링크클릭">링크 클릭</option>
         <option value="구매">구매수</option>
         <option value="ROAS">ROAS</option>
+        <option value="CTR">CTR (높은순)</option>
         <option value="CPA">구매당 비용 (낮은순)</option>
         <option value="CPC">CPC (낮은순)</option>
         <option value="CPM">CPM (낮은순)</option>
@@ -1287,6 +1288,7 @@ function buildAggregated() {
     a.ROAS = a.지출 > 0 ? +(a.전환값 / a.지출).toFixed(2) : 0;
     a.CPC  = a.링크클릭 > 0 ? Math.round(a.지출 / a.링크클릭) : null;
     a.CPM  = a.노출 > 0 ? Math.round(a.지출 / a.노출 * 1000) : 0;
+    a.CTR  = a.노출 > 0 ? +(a.링크클릭 / a.노출 * 100).toFixed(2) : 0;
     a.CVR  = a.링크클릭 > 0 ? +(a.구매 / a.링크클릭 * 100).toFixed(2) : 0;
     // CPA: 구매당 비용 (지출 / 구매수)
     a.CPA  = a.구매 > 0 ? Math.round(a.지출 / a.구매) : null;
@@ -1436,6 +1438,7 @@ function applyFilters() {
     a.ROAS = a.지출 > 0 ? +(a.전환값/a.지출).toFixed(2) : 0;
     a.CPC  = a.링크클릭>0 ? Math.round(a.지출/a.링크클릭) : null;
     a.CPM  = a.노출>0 ? Math.round(a.지출/a.노출*1000) : 0;
+    a.CTR  = a.노출>0 ? +(a.링크클릭/a.노출*100).toFixed(2) : 0;
     a.CVR  = a.링크클릭>0 ? +(a.구매/a.링크클릭*100).toFixed(2) : 0;
     a.CPA  = a.구매>0 ? Math.round(a.지출/a.구매) : null;
   });
@@ -1472,11 +1475,13 @@ function renderKPIs() {
   const cpc         = totalClick > 0 ? Math.round(totalSpend/totalClick) : '-';
   const cpm         = totalImp   > 0 ? Math.round(totalSpend/totalImp*1000) : '-';
   const cpa         = totalPurch > 0 ? Math.round(totalSpend/totalPurch) : '-';
+  const ctr         = totalImp   > 0 ? (totalClick/totalImp*100).toFixed(2) : '-';
 
   document.getElementById('kpiRow').innerHTML = [
     { label:'총 지출',       value: '₩'+fmtNum(totalSpend),                      sub: `${FILTERED.length}개 소재` },
     { label:'총 노출',       value: fmtNum(totalImp),                             sub:'impressions' },
     { label:'링크 클릭',     value: fmtNum(totalClick),                           sub:'link clicks' },
+    { label:'CTR',           value: ctr === '-' ? '-' : ctr+'%',                  sub:'click-through rate' },
     { label:'구매 수',       value: fmtNum(totalPurch),                           sub:'conversions' },
     { label:'구매전환 금액', value: totalConv > 0 ? '₩'+fmtNum(totalConv) : '-', sub:'purchase conversion value' },
     { label:'구매당 비용',   value: cpa === '-' ? '-' : '₩'+fmtNum(cpa),         sub:'cost per purchase' },
@@ -1607,8 +1612,9 @@ function renderTab(tab) {
         <div class="metric-item"><div class="metric-val">${cpcDisplay}</div><div class="metric-lbl">CPC</div></div>
       </div>`;
     } else if (r.goal === 'LINK_CLICKS') {
-      metricsHtml = `<div class="metrics-grid cols-3">
+      metricsHtml = `<div class="metrics-grid cols-4">
         <div class="metric-item"><div class="metric-val">${fmtNum(r.링크클릭)}회</div><div class="metric-lbl">링크클릭</div></div>
+        <div class="metric-item"><div class="metric-val">${r.CTR ? r.CTR+'%' : '-'}</div><div class="metric-lbl">CTR</div></div>
         <div class="metric-item"><div class="metric-val">${cpcDisplay}</div><div class="metric-lbl">CPC</div></div>
         <div class="metric-item"><div class="metric-val">₩${fmtNum(r.CPM)}</div><div class="metric-lbl">CPM</div></div>
       </div>`;
