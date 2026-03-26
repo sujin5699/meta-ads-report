@@ -1009,8 +1009,8 @@ input[type="number"] { width: 60px; }
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       GitHub 연동
     </button>
-    <button class="export-btn" id="exportBtn" onclick="exportWithData()">
-      🔗 공유용 내보내기
+    <button class="export-btn" id="exportBtn" onclick="copyShareLink()">
+      🔗 공유 링크 복사
     </button>
     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
       📂 엑셀 업로드
@@ -1905,8 +1905,20 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── 공유 링크 복사 ──
+function copyShareLink() {
+  const url = location.origin + location.pathname; // ?admin=true 제거
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('exportBtn');
+    btn.textContent = '✓ 복사됐어요';
+    setTimeout(() => { btn.textContent = '🔗 공유 링크 복사'; }, 2000);
+  }).catch(() => {
+    prompt('아래 링크를 복사하세요:', url);
+  });
+}
+
 // ═══════════════════════════════════════════
-// 공유용 내보내기
+// 공유용 내보내기 (내장 파일용, 직접 호출 안 함)
 // ═══════════════════════════════════════════
 async function exportWithData() {
   if (!RAW.length) return;
@@ -2447,6 +2459,10 @@ async function loadFromGithub() {
 
     RAW          = payload.raw;
     LOADED_FILES = payload.files || [];
+    // data.json에 저장된 썸네일 캐시 복원
+    if (payload.thumbs) {
+      Object.assign(thumbCache, payload.thumbs);
+    }
     LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
     buildAggregated();
     renderFileChips();
@@ -2547,82 +2563,69 @@ function showMetaResult(type, msg) {
 
 // 광고 ID로 썸네일 fetch — 배치로 처리
 async function loadThumbnails(items) {
-  if (!META_TOKEN || !items.length) {
-    // 토큰 없으면 로딩 shimmer → 빈 플레이스홀더로
+  if (!items.length) return;
+
+  // 1) data.json 서버 캐시 먼저 적용 (토큰 없어도 표시됨)
+  items.forEach(r => {
+    const adId = String(r.id).split('|')[0].replace(/[^0-9]/g, '');
+    if (thumbCache[adId]) applyThumb(r.id, thumbCache[adId]);
+    else if (thumbCache[r.id]) applyThumb(r.id, thumbCache[r.id]);
+  });
+
+  // 2) 토큰 없으면 shimmer 제거 후 종료
+  if (!META_TOKEN) {
     items.forEach(r => {
       const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
-      if (el) el.outerHTML = '';
+      if (el && el.className === 'card-thumb-loading') el.outerHTML = '';
     });
     return;
   }
 
-  // 캐시된 것 먼저 적용
-  items.forEach(r => {
-    if (thumbCache[r.id]) applyThumb(r.id, thumbCache[r.id]);
+  // 3) 토큰 있으면 캐시 없는 것만 API 호출
+  const uncached = items.filter(r => {
+    const adId = String(r.id).split('|')[0].replace(/[^0-9]/g, '');
+    return !thumbCache[adId] && !thumbCache[r.id];
   });
 
-  // 미캐시 항목만 API 요청
-  const uncached = items.filter(r => !thumbCache[r.id]);
-  if (!uncached.length) return;
+  const adIds = uncached.map(r =>
+    String(r.id).split('|')[0].replace(/[^0-9]/g, '')
+  ).filter(Boolean);
 
-  // Meta는 광고 ID에서 앞부분(순수 숫자)만 필요
-  const adIds = uncached.map(r => {
-    const raw = String(r.id).split('|')[0];
-    return raw.replace(/[^0-9]/g, '');
-  }).filter(Boolean);
-
-  // 배치 요청 (25개씩)
   for (let i = 0; i < adIds.length; i += 25) {
     const batch = adIds.slice(i, i + 25);
     try {
       const fields = 'id,creative{thumbnail_url,object_story_spec,video_id}';
-      const ids = batch.join(',');
-      const url = `https://graph.facebook.com/v19.0/?ids=${ids}&fields=${fields}&access_token=${META_TOKEN}`;
+      const url = `https://graph.facebook.com/v19.0/?ids=${batch.join(',')}&fields=${fields}&access_token=${META_TOKEN}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.error) continue;
-
       for (const adId of Object.keys(data)) {
-        const ad = data[adId];
-        const creative = ad.creative;
+        const creative = data[adId].creative;
         if (!creative) continue;
-
         let info = null;
-
-        // 영상 소재
         if (creative.video_id || creative.object_story_spec?.video_data) {
-          const vidId = creative.video_id ||
-            creative.object_story_spec?.video_data?.video_id;
+          const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
           if (vidId) {
-            const vRes = await fetch(
-              `https://graph.facebook.com/v19.0/${vidId}?fields=thumbnails&access_token=${META_TOKEN}`
-            );
+            const vRes = await fetch(`https://graph.facebook.com/v19.0/${vidId}?fields=thumbnails&access_token=${META_TOKEN}`);
             const vData = await vRes.json();
             const thumbUrl = vData.thumbnails?.data?.[0]?.uri || creative.thumbnail_url;
             info = { type: 'video', thumbUrl };
           }
         }
-        // 이미지 소재
         if (!info && creative.thumbnail_url) {
           info = { type: 'image', thumbUrl: creative.thumbnail_url };
         }
-
         if (info) {
-          // 원래 row id 찾기
+          thumbCache[adId] = info;
           const row = uncached.find(r => String(r.id).split('|')[0].replace(/[^0-9]/g,'') === adId);
-          if (row) {
-            thumbCache[row.id] = info;
-            applyThumb(row.id, info);
-          }
+          if (row) applyThumb(row.id, info);
         }
       }
-    } catch(e) {
-      console.warn('썸네일 로드 실패:', e);
-    }
+    } catch(e) { console.warn('썸네일 로드 실패:', e); }
   }
 
-  // 여전히 shimmer인 건 빈칸으로
-  uncached.forEach(r => {
+  // 4) 여전히 shimmer인 건 제거
+  items.forEach(r => {
     const el = document.getElementById('thumb-' + r.id.replace(/[^a-zA-Z0-9]/g,'_'));
     if (el && el.className === 'card-thumb-loading') el.outerHTML = '';
   });
@@ -2698,6 +2701,16 @@ function loadFromLocal() {
 
 // ── 페이지 로드 시 데이터 복원 (GitHub 우선 → 로컬스토리지 폴백) ──
 (async function init() {
+  // ?admin=true 일 때만 관리 버튼 표시, 아니면 모두 숨김
+  const isAdmin = new URLSearchParams(location.search).get('admin') === 'true';
+  if (!isAdmin) {
+    ['metaApiBtn','githubBtn','exportBtn','syncStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    document.querySelector('.upload-btn')?.style.setProperty('display','none');
+  }
+
   loadGithubSettings();
   loadMetaSettings();
   // 내장 데이터(_loadEmbedded)가 이미 처리한 경우 스킵
