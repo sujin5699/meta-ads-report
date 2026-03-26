@@ -1488,32 +1488,29 @@ function exportWithData() {
 
   setTimeout(() => {
     try {
-      // 현재 HTML 소스 가져오기
+      // HTML 캡처 전에 버튼 상태 원래대로 복원
+      btn.textContent = '🔗 공유용 내보내기';
+      btn.disabled = false;
+
       let src = document.documentElement.outerHTML;
 
-      // 내장할 데이터 준비
       const payload = JSON.stringify({
         raw: RAW,
         files: LOADED_FILES.map(f => ({ name: f.name, channel: f.channel, count: f.count, added: f.added })),
         exportedAt: new Date().toISOString(),
       });
 
-      // __EMBEDDED_DATA__ 마커로 교체하거나, 없으면 스크립트 앞에 삽입
+      // 내장 데이터 주입 — DOMContentLoaded 없이 즉시 실행 방식으로
       const marker = '/* __EMBEDDED_DATA_PLACEHOLDER__ */';
-      const inject = `/* __EMBEDDED_DATA_PLACEHOLDER__ */\n  const __EMBEDDED__ = ${payload};\n  if(__EMBEDDED__) { _loadEmbedded(__EMBEDDED__); }`;
+      const inject = `/* __EMBEDDED_DATA_PLACEHOLDER__ */\n  const __EMBEDDED__ = ${payload};\n  if(typeof _loadEmbedded === 'function') _loadEmbedded(__EMBEDDED__);`;
 
       if (src.includes(marker)) {
         src = src.replace(marker, inject);
       } else {
-        // 스크립트 블록 맨 앞에 삽입
         src = src.replace('// ── STATE ──', `// ── STATE ──\n  /* __EMBEDDED_DATA_PLACEHOLDER__ */`);
         src = src.replace('/* __EMBEDDED_DATA_PLACEHOLDER__ */', inject);
       }
 
-      // 내보낸 파일에서는 export 버튼 항상 표시되도록
-      src = src.replace('display: none;\n}', 'display: none;\n}\n');
-
-      // 다운로드
       const channels = [...new Set(LOADED_FILES.map(f => f.channel))].join('-');
       const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
       const filename = `meta-report_${channels}_${dateStr}.html`;
@@ -1526,10 +1523,7 @@ function exportWithData() {
       URL.revokeObjectURL(url);
 
       btn.textContent = '✓ 다운로드 완료';
-      setTimeout(() => {
-        btn.textContent = '🔗 공유용 내보내기';
-        btn.disabled = false;
-      }, 2000);
+      setTimeout(() => { btn.textContent = '🔗 공유용 내보내기'; }, 2000);
     } catch(e) {
       btn.textContent = '🔗 공유용 내보내기';
       btn.disabled = false;
@@ -1538,37 +1532,33 @@ function exportWithData() {
   }, 50);
 }
 
-// ── 내장 데이터 자동 로드 ──
+// ── 내장 데이터 자동 로드 (스크립트 실행 시점에 즉시) ──
 function _loadEmbedded(payload) {
-  // 페이지 로드 직후 실행: 내장 데이터를 RAW/LOADED_FILES에 주입하고 대시보드 바로 표시
-  document.addEventListener('DOMContentLoaded', () => {
-    RAW = payload.raw || [];
-    LOADED_FILES = (payload.files || []).map(f => ({ ...f }));
+  // body 스크립트 맨 끝에서 호출되므로 DOM은 이미 준비된 상태
+  RAW = payload.raw || [];
+  LOADED_FILES = (payload.files || []).map(f => ({ ...f }));
 
-    if (!RAW.length) return;
+  if (!RAW.length) return;
 
-    // 채널 색상 복원
-    LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
+  LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
 
-    buildAggregated();
-    renderFileChips();
+  buildAggregated();
+  renderFileChips();
 
-    document.getElementById('uploadScreen').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    document.getElementById('exportBtn').classList.add('visible');
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('exportBtn').classList.add('visible');
 
-    // 내보낸 버전임을 표시
-    const exportedAt = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString('ko-KR') : '';
-    if (exportedAt) {
-      const notice = document.createElement('div');
-      notice.style.cssText = 'position:fixed;top:62px;right:16px;z-index:99;background:#fff;border:1px solid #e8eaf0;border-radius:8px;padding:6px 12px;font-size:11px;color:#9299ab;box-shadow:0 2px 8px rgba(0,0,0,0.08);';
-      notice.innerHTML = `📦 내보낸 데이터 · ${exportedAt} 기준 &nbsp;<span onclick="this.parentNode.remove()" style="cursor:pointer;color:#ccc">✕</span>`;
-      document.body.appendChild(notice);
-    }
+  const exportedAt = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString('ko-KR') : '';
+  if (exportedAt) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'position:fixed;top:62px;right:16px;z-index:99;background:#fff;border:1px solid #e8eaf0;border-radius:8px;padding:6px 12px;font-size:11px;color:#9299ab;box-shadow:0 2px 8px rgba(0,0,0,0.08);';
+    notice.innerHTML = `📦 내보낸 데이터 · ${exportedAt} 기준 &nbsp;<span onclick="this.parentNode.remove()" style="cursor:pointer;color:#ccc">✕</span>`;
+    document.body.appendChild(notice);
+  }
 
-    initFilters();
-    applyFilters();
-  });
+  initFilters();
+  applyFilters();
 }
 
 // ═══════════════════════════════════════════
