@@ -426,6 +426,39 @@ input[type="number"] { width: 60px; }
   align-items: center;
 }
 
+/* ── DRAG HINT BANNER ── */
+.drag-hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #eef1ff;
+  border: 1px solid #c5cef5;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #3b5bdb;
+  margin-bottom: 14px;
+  position: relative;
+  line-height: 1.5;
+}
+.drag-hint-banner.hidden { display: none; }
+.drag-hint-icon {
+  font-size: 18px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.drag-hint-close {
+  margin-left: auto;
+  cursor: pointer;
+  opacity: 0.4;
+  font-size: 14px;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+.drag-hint-close:hover { opacity: 1; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 700px) {
   .chart-row { grid-template-columns: 1fr; }
@@ -719,7 +752,7 @@ input[type="number"] { width: 60px; }
   <div class="topbar-sep"></div>
   <div class="topbar-title">캠페인 소재 성과 대시보드</div>
   <div class="topbar-right">
-    <div id="fileChips" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:500px;"></div>
+    <div id="fileChips" style="display:none;"></div>
     <button class="export-btn" id="exportBtn" onclick="exportWithData()">
       🔗 공유용 내보내기
     </button>
@@ -850,6 +883,14 @@ input[type="number"] { width: 60px; }
     </div>
     <div style="font-size:11px;color:var(--ink3);" id="sectionDesc"></div>
   </div>
+
+  <!-- DRAG HINT BANNER -->
+  <div class="drag-hint-banner" id="dragHintBanner">
+    <span class="drag-hint-icon">⠿</span>
+    소재 카드를 드래그해서 하단 <b>비교함</b>에 올려두면 최대 4개까지 나란히 비교할 수 있어요
+    <span class="drag-hint-close" onclick="dismissDragHint()">✕</span>
+  </div>
+
   <div class="cards-grid" id="cardsGrid"></div>
 
   <!-- FOOTER -->
@@ -1423,6 +1464,10 @@ function fmtNum(n) {
 }
 function shortName(name) {
   return name.replace(/^\[.+?\]\s*/,'').substring(0,22)+'…';
+}
+
+function dismissDragHint() {
+  document.getElementById('dragHintBanner').classList.add('hidden');
 }
 
 // ── 엔터 단축키 ──
