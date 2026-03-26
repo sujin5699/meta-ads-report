@@ -6,6 +6,8 @@
 <title>Meta 광고 소재 성과 리포트</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- 공유용 내장 데이터 (비어있으면 업로드 화면 표시) -->
+<script id="__embedded_data__" type="application/json"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
 
@@ -1479,84 +1481,73 @@ document.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════
 // 공유용 내보내기
 // ═══════════════════════════════════════════
-function exportWithData() {
+async function exportWithData() {
   if (!RAW.length) return;
-
   const btn = document.getElementById('exportBtn');
   btn.textContent = '⏳ 생성 중...';
   btn.disabled = true;
-
-  setTimeout(() => {
+  try {
+    // 원본 소스를 fetch로 가져옴 (outerHTML은 데이터 안의 특수문자로 깨질 수 있어서)
+    let src;
     try {
-      // HTML 캡처 전에 버튼 상태 원래대로 복원
-      btn.textContent = '🔗 공유용 내보내기';
-      btn.disabled = false;
-
-      let src = document.documentElement.outerHTML;
-
-      const payload = JSON.stringify({
-        raw: RAW,
-        files: LOADED_FILES.map(f => ({ name: f.name, channel: f.channel, count: f.count, added: f.added })),
-        exportedAt: new Date().toISOString(),
-      });
-
-      // 내장 데이터 주입 — 스크립트 맨 끝 마커 위치에 삽입
-      const marker = '/* __EMBEDDED_DATA_PLACEHOLDER__ */';
-      const inject = `const __EMBEDDED__ = ${payload};\n  _loadEmbedded(__EMBEDDED__);`;
-
-      if (src.includes(marker)) {
-        src = src.replace(marker, inject);
-      } else {
-        // 마커가 없으면 </script> 바로 앞에 삽입
-        src = src.replace('</script>\n</body>', `${inject}\n</script>\n</body>`);
-      }
-
-      const channels = [...new Set(LOADED_FILES.map(f => f.channel))].join('-');
-      const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const filename = `meta-report_${channels}_${dateStr}.html`;
-
-      const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      btn.textContent = '✓ 다운로드 완료';
-      setTimeout(() => { btn.textContent = '🔗 공유용 내보내기'; }, 2000);
+      const res = await fetch(location.href);
+      src = await res.text();
     } catch(e) {
-      btn.textContent = '🔗 공유용 내보내기';
-      btn.disabled = false;
-      alert('내보내기 실패: ' + e.message);
+      src = document.documentElement.outerHTML;
     }
-  }, 50);
+    // Escape closing script tags inside JSON to prevent HTML parser breaking
+    const closeScript = '<' + '/script>';
+    const jsonStr = JSON.stringify({
+      raw: RAW,
+      files: LOADED_FILES.map(f => ({ name: f.name, channel: f.channel, count: f.count, added: f.added })),
+      exportedAt: new Date().toISOString(),
+    }).replace(new RegExp(closeScript, 'gi'), '<\\/script>');
+    // Inject into <script type="application/json"> tag — safe from HTML parser
+    const dataTagPattern = /<script id="__embedded_data__" type="application[/]json">[\s\S]*?<[/]script>/;
+    const dataTagFilled = '<script id="__embedded_data__" type="application/json">' + jsonStr + closeScript;
+    src = src.replace(dataTagPattern, dataTagFilled);
+    const channels = [...new Set(LOADED_FILES.map(f => f.channel).filter(Boolean))].join('-') || 'report';
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meta-report_${channels}_${dateStr}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = '✓ 다운로드 완료';
+    setTimeout(() => { btn.textContent = '🔗 공유용 내보내기'; btn.disabled = false; }, 2000);
+  } catch(e) {
+    btn.textContent = '🔗 공유용 내보내기';
+    btn.disabled = false;
+    alert('내보내기 실패: ' + e.message);
+  }
 }
 
-// ── 내장 데이터 자동 로드 (스크립트 실행 시점에 즉시) ──
-function _loadEmbedded(payload) {
-  // body 스크립트 맨 끝에서 호출되므로 DOM은 이미 준비된 상태
+// ── 내장 데이터 자동 로드 ──
+function _loadEmbedded() {
+  const tag = document.getElementById('__embedded_data__');
+  if (!tag || !tag.textContent.trim()) return;
+  let payload;
+  try { payload = JSON.parse(tag.textContent); }
+  catch(e) { console.warn('내장 데이터 파싱 실패:', e); return; }
   RAW = payload.raw || [];
   LOADED_FILES = (payload.files || []).map(f => ({ ...f }));
-
   if (!RAW.length) return;
-
   LOADED_FILES.forEach(f => { if (f.channel) getChannelColor(f.channel); });
-
   buildAggregated();
   renderFileChips();
-
   document.getElementById('uploadScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('exportBtn').classList.add('visible');
-
-  const exportedAt = payload.exportedAt ? new Date(payload.exportedAt).toLocaleDateString('ko-KR') : '';
+  const exportedAt = payload.exportedAt
+    ? new Date(payload.exportedAt).toLocaleDateString('ko-KR') : '';
   if (exportedAt) {
     const notice = document.createElement('div');
     notice.style.cssText = 'position:fixed;top:62px;right:16px;z-index:99;background:#fff;border:1px solid #e8eaf0;border-radius:8px;padding:6px 12px;font-size:11px;color:#9299ab;box-shadow:0 2px 8px rgba(0,0,0,0.08);';
-    notice.innerHTML = `📦 내보낸 데이터 · ${exportedAt} 기준 &nbsp;<span onclick="this.parentNode.remove()" style="cursor:pointer;color:#ccc">✕</span>`;
+    notice.innerHTML = '📦 내보낸 데이터 · ' + exportedAt + ' 기준 &nbsp;<span onclick="this.parentNode.remove()" style="cursor:pointer;color:#ccc">✕</span>';
     document.body.appendChild(notice);
   }
-
   initFilters();
   applyFilters();
 }
@@ -1836,7 +1827,7 @@ function renderCompareModal() {
 })();
 
 // ── EMBEDDED DATA ENTRY POINT ──
-/* __EMBEDDED_DATA_PLACEHOLDER__ */
+_loadEmbedded();
 </script>
 </body>
 </html>
