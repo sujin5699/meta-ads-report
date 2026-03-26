@@ -985,7 +985,13 @@ input[type="number"] { width: 60px; }
       </select>
     </div>
     <button class="btn-apply" onclick="applyFilters()">적용</button>
-    <div style="margin-left:auto;font-size:11px;color:var(--ink3);" id="dataInfo"></div>
+    <div class="filter-group" style="margin-left:auto;">
+      <input type="text" id="searchQuery" placeholder="🔍 소재명 / ID 검색"
+        style="width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;
+               font-size:12px;font-family:'Pretendard',sans-serif;color:var(--ink);background:var(--bg);"
+        oninput="applyFilters()">
+    </div>
+    <div style="font-size:11px;color:var(--ink3);" id="dataInfo"></div>
   </div>
 
   <!-- KPI SUMMARY -->
@@ -1458,8 +1464,13 @@ function applyFilters() {
   let base = Object.values(filtered);
   const selCampaign = document.getElementById('filterCampaign').value;
   const selAdset    = document.getElementById('filterAdset').value;
+  const searchQ     = (document.getElementById('searchQuery')?.value || '').trim().toLowerCase();
   if (selCampaign) base = base.filter(r => r.campaign === selCampaign);
   if (selAdset)    base = base.filter(r => r.adset    === selAdset);
+  if (searchQ)     base = base.filter(r =>
+    r.name.toLowerCase().includes(searchQ) ||
+    String(r.id).toLowerCase().includes(searchQ)
+  );
   FILTERED = base;
 
   renderKPIs();
