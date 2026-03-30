@@ -3185,6 +3185,9 @@ async function fetchAccountInsights(accountId, channelName, dateFrom, dateTo, to
   }
 
   const timeRange = JSON.stringify({ since: dateFrom, until: dateTo });
+  // 광고관리자 기본 기여 창(7일 클릭 + 1일 조회)과 일치시키기 위해 명시적으로 지정
+  // 미지정 시 API 기본값은 1일 클릭 → 구매수가 대폭 낮게 나옴
+  const attrWindows = encodeURIComponent(JSON.stringify(['7d_click','1d_view']));
   let rows = [];
   let url = `https://graph.facebook.com/v19.0/${accountId}/insights`
     + `?fields=${encodeURIComponent(fields)}`
@@ -3192,6 +3195,7 @@ async function fetchAccountInsights(accountId, channelName, dateFrom, dateTo, to
     + `&time_increment=1`
     + `&level=ad`
     + `&limit=500`
+    + `&action_attribution_windows=${attrWindows}`
     + `&access_token=${encodeURIComponent(token)}`;
 
   let pageNum = 0;
