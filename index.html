@@ -801,6 +801,62 @@ input[type="number"] { width: 60px; }
 .insight-point { margin-bottom: 6px; }
 .insight-point:last-child { margin-bottom: 0; }
 
+/* ── SMART INSIGHTS ── */
+.si-section { margin-bottom: 28px; }
+.si-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+}
+.si-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.15s;
+}
+.si-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.si-card.si-success { border-color: #0ca67855; background: #f0fdf8; }
+.si-card.si-warning { border-color: #e6770055; background: #fffbf0; }
+.si-card.si-danger  { border-color: #e0313155; background: #fff5f5; }
+.si-card.si-info    { border-color: #3b5bdb55; background: #f0f4ff; }
+.si-top {
+  display: flex; align-items: center; gap: 8px;
+}
+.si-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.si-cat {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--ink3);
+}
+.si-card.si-success .si-cat { color: #0a7a5a; }
+.si-card.si-warning .si-cat { color: #b35900; }
+.si-card.si-danger  .si-cat { color: #c91e3a; }
+.si-card.si-info    .si-cat { color: #2f4dbf; }
+.si-title {
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  line-height: 1.4;
+}
+.si-body {
+  font-size: 12px; color: var(--ink2); line-height: 1.7;
+}
+.si-action {
+  display: inline-block; margin-top: 4px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  align-self: flex-start;
+}
+.si-action.si-success { background: #0ca67820; color: #0a7a5a; }
+.si-action.si-warning { background: #e6770020; color: #b35900; }
+.si-action.si-danger  { background: #e0313120; color: #c91e3a; }
+.si-action.si-info    { background: #3b5bdb20; color: #2f4dbf; }
+.si-empty {
+  padding: 20px; text-align: center;
+  font-size: 13px; color: var(--ink3);
+}
+
 /* ── DRAG ── */
 .creative-card[draggable="true"] { cursor: grab; }
 .creative-card[draggable="true"]:active { cursor: grabbing; }
@@ -1412,6 +1468,18 @@ input[type="number"] { width: 60px; }
   </div>
 
   <div class="cards-grid" id="cardsGrid"></div>
+
+  <!-- SMART INSIGHTS -->
+  <div id="smartInsightsSection" class="si-section" style="display:none;">
+    <div class="section-head" style="margin-top:8px;">
+      <div class="section-title">
+        🤖 AI 운영 인사이트
+        <span class="section-badge badge-all" id="siBadge"></span>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);">현재 필터 기준 · 자동 분석</div>
+    </div>
+    <div class="si-grid" id="smartInsightsContent"></div>
+  </div>
 
   <!-- PERIOD COMPARISON ANALYSIS -->
   <div id="periodAnalysisSection" style="display:none;margin-bottom:28px;">
@@ -2204,6 +2272,9 @@ function renderTab(tab) {
   });
   // Meta API 썸네일 로드
   loadThumbnails(top);
+
+  // AI 운영 인사이트 렌더
+  renderSmartInsights(FILTERED);
 }
 
 // ── HELPERS ──
@@ -2716,6 +2787,207 @@ function deltaText(cur, prev, higher='good', fmt='num') {
   const cls = Math.abs(pct) < 1 ? 'delta-flat' : isGood ? 'delta-up' : 'delta-down';
   const sign = up ? '▲' : '▼';
   return `<span class="analysis-delta ${cls}">${sign} ${abs}%</span>`;
+}
+
+// ═══════════════════════════════════════════
+// AI 운영 인사이트 엔진
+// ═══════════════════════════════════════════
+function siShortName(n, max) {
+  max = max || 30;
+  return n && n.length > max ? n.substring(0, max) + '…' : (n || '(이름없음)');
+}
+
+function siCard(type, icon, cat, title, body, actionLabel) {
+  return `
+  <div class="si-card si-${type}">
+    <div class="si-top">
+      <span class="si-icon">${icon}</span>
+      <span class="si-cat">${cat}</span>
+    </div>
+    <div class="si-title">${title}</div>
+    <div class="si-body">${body}</div>
+    <span class="si-action si-${type}">${actionLabel}</span>
+  </div>`;
+}
+
+function renderSmartInsights(items) {
+  const section = document.getElementById('smartInsightsSection');
+  if (!items || items.length < 2) { section.style.display = 'none'; return; }
+
+  // 의미있는 지출이 있는 소재만 (전체 평균의 5% 이상 또는 최소 1만원)
+  const totalSpend = items.reduce((s, i) => s + i.지출, 0);
+  const minSpend   = Math.max(10000, totalSpend / items.length * 0.3);
+  const qualified  = items.filter(i => i.지출 >= minSpend);
+  if (qualified.length < 2) { section.style.display = 'none'; return; }
+
+  // ── 평균값 계산 ──
+  const withPurchase = qualified.filter(i => i.구매 > 0);
+  const avgROAS = withPurchase.length
+    ? withPurchase.reduce((s, i) => s + i.ROAS, 0) / withPurchase.length : 0;
+  const avgCTR  = qualified.reduce((s, i) => s + (i.CTR || 0), 0) / qualified.length;
+  const avgCPM  = qualified.reduce((s, i) => s + (i.CPM || 0), 0) / qualified.length;
+  const avgCPA  = withPurchase.length
+    ? withPurchase.reduce((s, i) => s + (i.CPA || 0), 0) / withPurchase.length : 0;
+
+  const cards = [];
+
+  // ── ① 효율 상위 소재: 왜 잘되는지 이유 추론 ──
+  const topPerf = [...withPurchase]
+    .filter(i => avgROAS > 0 && i.ROAS >= avgROAS * 1.5)
+    .sort((a, b) => b.ROAS - a.ROAS)
+    .slice(0, 3);
+
+  topPerf.forEach(item => {
+    const reasons = [];
+    if (avgCTR > 0 && item.CTR >= avgCTR * 1.3)
+      reasons.push(`CTR ${item.CTR}%로 평균(${avgCTR.toFixed(1)}%)보다 높아 <b>소재가 타겟의 주목을 효과적으로 끌고 있어요</b>`);
+    if (avgCPM > 0 && item.CPM <= avgCPM * 0.8)
+      reasons.push(`CPM ₩${fmtNum(item.CPM)}으로 저렴해 <b>같은 예산으로 더 많은 노출을 확보</b>하고 있어요`);
+    if (avgCPA > 0 && item.CPA && item.CPA <= avgCPA * 0.7)
+      reasons.push(`구매당 비용 ₩${fmtNum(item.CPA)}으로 <b>전환 비용이 매우 효율적</b>이에요`);
+    if (item.장바구니 > 0 && item.링크클릭 > 0 && (item.장바구니 / item.링크클릭) > 0.05)
+      reasons.push(`장바구니 담기율 ${(item.장바구니/item.링크클릭*100).toFixed(1)}%로 <b>구매 의향 높은 유저를 잘 포착</b>하고 있어요`);
+
+    const spendShare = (item.지출 / totalSpend * 100).toFixed(0);
+    const defaultReason = `평균 ROAS(${avgROAS.toFixed(1)}x)의 <b>${(item.ROAS/avgROAS).toFixed(1)}배</b>를 달성하고 있어요`;
+    const bodyText = reasons.length
+      ? reasons.join('. ') + `. 현재 지출 비중 ${spendShare}% — 유사 소재 추가 제작 및 예산 확대를 검토해보세요.`
+      : defaultReason + `. 현재 지출 비중 ${spendShare}% — 이 소재와 유사한 포맷·메시지의 소재를 추가 제작해보세요.`;
+
+    cards.push(siCard(
+      'success', '🏆', '효율 소재 · 확장 추천',
+      `"${siShortName(item.name)}" — ROAS ${item.ROAS}x / 구매 ${fmtNum(item.구매)}건`,
+      bodyText, '예산 확대 검토'
+    ));
+  });
+
+  // ── ② 노출 빈도 경고 (노출/도달) ──
+  qualified
+    .filter(i => i.도달 > 100 && (i.노출 / i.도달) >= 2.5)
+    .sort((a, b) => (b.노출 / b.도달) - (a.노출 / a.도달))
+    .slice(0, 3)
+    .forEach(item => {
+      const freq = (item.노출 / item.도달).toFixed(1);
+      const isCritical = freq >= 4.5;
+      cards.push(siCard(
+        isCritical ? 'danger' : 'warning',
+        '🔄', '소재 피로도 경고',
+        `"${siShortName(item.name)}" — 노출 빈도 ${freq}회`,
+        isCritical
+          ? `동일 유저에게 평균 ${freq}회 노출됐어요. 광고 피로도 누적으로 CTR 하락·CPM 상승이 우려됩니다. <b>즉시 OFF 또는 소재 교체를 강력히 권장</b>합니다.`
+          : `빈도 ${freq}회로 소재 피로도가 감지됩니다. CTR ${item.CTR}%. <b>새로운 소재로 교체</b>하거나 노출 빈도 상한 설정을 검토하세요.`,
+        isCritical ? '즉시 OFF 검토' : '소재 교체 검토'
+      ));
+    });
+
+  // ── ③ 지출 큰데 전환 0인 소재 ──
+  qualified
+    .filter(i => i.구매 === 0 && i.지출 >= Math.max(30000, totalSpend * 0.03))
+    .sort((a, b) => b.지출 - a.지출)
+    .slice(0, 2)
+    .forEach(item => {
+      const freq = item.도달 > 0 ? (item.노출 / item.도달).toFixed(1) : '-';
+      cards.push(siCard(
+        'danger', '🚨', '전환 없는 지출 소재 · OFF 검토',
+        `"${siShortName(item.name)}" — ₩${fmtNum(item.지출)} 지출, 구매 0건`,
+        `CTR ${item.CTR}% / CPM ₩${fmtNum(item.CPM)} / 빈도 ${freq}회. ` +
+        (item.CTR < avgCTR * 0.5
+          ? `클릭률이 평균보다 낮아 <b>소재 자체의 매력도 개선</b>이 필요해요.`
+          : `클릭은 발생하지만 구매 전환이 없어요. <b>랜딩페이지 최적화 또는 타겟 재설정</b>을 검토하세요.`),
+        'OFF / 소재 교체 검토'
+      ));
+    });
+
+  // ── ④ CTR 높지만 구매 0 — 랜딩 개선 기회 ──
+  qualified
+    .filter(i => i.구매 === 0 && i.링크클릭 >= 30 && avgCTR > 0 && i.CTR >= avgCTR * 1.8)
+    .sort((a, b) => b.CTR - a.CTR)
+    .slice(0, 2)
+    .forEach(item => {
+      cards.push(siCard(
+        'info', '🎯', '클릭 유도 우수 · 랜딩 전환 개선 필요',
+        `"${siShortName(item.name)}" — CTR ${item.CTR}% (평균의 ${(item.CTR/avgCTR).toFixed(1)}배)`,
+        `클릭 유도력은 평균보다 훨씬 높지만 구매 전환이 없어요. ` +
+        `<b>소재 훅은 좋으나 랜딩페이지에서 전환이 막히고 있는 신호</b>입니다. ` +
+        `랜딩 페이지 UX 점검 또는 리타겟팅 세트에 이 소재를 활용해보세요.`,
+        '랜딩 / 리타겟팅 최적화'
+      ));
+    });
+
+  // ── ⑤ 캠페인 단위 효율 비교 ──
+  const campMap = {};
+  qualified.forEach(i => {
+    const k = i.campaign || '(미분류)';
+    if (!campMap[k]) campMap[k] = { 지출: 0, 구매: 0, 전환값: 0, 노출: 0, 도달: 0, cnt: 0 };
+    campMap[k].지출    += i.지출;
+    campMap[k].구매    += i.구매;
+    campMap[k].전환값  += i.전환값;
+    campMap[k].노출    += i.노출;
+    campMap[k].도달    += i.도달;
+    campMap[k].cnt++;
+  });
+  const camps = Object.entries(campMap)
+    .map(([name, v]) => ({ name, ...v, ROAS: v.지출 > 0 ? +(v.전환값 / v.지출).toFixed(2) : 0 }))
+    .filter(c => c.지출 >= totalSpend * 0.05);
+
+  if (camps.length >= 2) {
+    const sorted = [...camps].sort((a, b) => b.ROAS - a.ROAS);
+    const best   = sorted[0];
+    const worst  = sorted[sorted.length - 1];
+
+    if (best.구매 > 0 && best.ROAS > 0) {
+      cards.push(siCard(
+        'success', '🚀', '캠페인 예산 확대 추천',
+        `"${siShortName(best.name, 38)}" — ROAS ${best.ROAS}x / 구매 ${fmtNum(best.구매)}건`,
+        `${best.cnt}개 소재 운영 중, 전환값 ₩${fmtNum(best.전환값)} 달성. ` +
+        `전체 지출의 ${(best.지출/totalSpend*100).toFixed(0)}% 비중이에요. ` +
+        `<b>성과 대비 예산이 부족하다면 이 캠페인 예산 증액이 효과적</b>입니다.`,
+        '예산 증액 검토'
+      ));
+    }
+    if (worst.name !== best.name && worst.지출 >= totalSpend * 0.1 &&
+        (worst.ROAS < best.ROAS * 0.4 || worst.구매 === 0)) {
+      cards.push(siCard(
+        'warning', '⚡', '캠페인 효율 점검',
+        `"${siShortName(worst.name, 38)}" — ROAS ${worst.ROAS}x / 지출 ₩${fmtNum(worst.지출)}`,
+        `지출 비중 ${(worst.지출/totalSpend*100).toFixed(0)}%이지만 전환 효율이 낮아요. ` +
+        (worst.구매 === 0
+          ? `구매 전환이 없습니다. <b>세트 내 소재 점검 또는 타겟·입찰 전략 재검토</b>가 필요합니다.`
+          : `최고 효율 캠페인(ROAS ${best.ROAS}x) 대비 ${((best.ROAS - worst.ROAS)/best.ROAS*100).toFixed(0)}% 낮습니다. <b>예산 비중 축소 후 상위 캠페인에 재배분</b>을 검토하세요.`),
+        '예산 축소 / 세트 점검'
+      ));
+    }
+  }
+
+  // ── ⑥ 광고 세트 단위 — 지출 큰데 전환 없는 세트 ──
+  const adsetMap = {};
+  qualified.forEach(i => {
+    const k = `${i.campaign || ''} › ${i.adset || '(미분류)'}`;
+    if (!adsetMap[k]) adsetMap[k] = { 지출: 0, 구매: 0, 전환값: 0, cnt: 0 };
+    adsetMap[k].지출   += i.지출;
+    adsetMap[k].구매   += i.구매;
+    adsetMap[k].전환값 += i.전환값;
+    adsetMap[k].cnt++;
+  });
+  Object.entries(adsetMap)
+    .filter(([, v]) => v.구매 === 0 && v.지출 >= Math.max(50000, totalSpend * 0.07))
+    .sort(([, a], [, b]) => b.지출 - a.지출)
+    .slice(0, 1)
+    .forEach(([name, v]) => {
+      cards.push(siCard(
+        'danger', '📊', '광고 세트 · 전환 없음',
+        `"${siShortName(name, 42)}" — ₩${fmtNum(v.지출)} 지출, 구매 0건`,
+        `${v.cnt}개 소재를 이 세트에서 운영 중이지만 구매 전환이 없어요. ` +
+        `<b>타겟 오디언스·입찰 전략 재검토 또는 세트 OFF</b> 후 예산을 성과 있는 세트에 집중하세요.`,
+        '세트 OFF / 전략 재검토'
+      ));
+    });
+
+  if (!cards.length) { section.style.display = 'none'; return; }
+
+  document.getElementById('smartInsightsContent').innerHTML = cards.join('');
+  document.getElementById('siBadge').textContent = `${cards.length}개 인사이트`;
+  section.style.display = 'block';
 }
 
 function renderPeriodAnalysis(mainData, compData, mainRange, compRange) {
