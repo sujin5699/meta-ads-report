@@ -1721,14 +1721,31 @@ function isSharedChannel(ch) {
   return ['브스', '컬리'].includes(ch);                   // 채널명 비교
 }
 
+// 엑셀 내보내기 기준 실제 컬럼명 매핑
+// (Meta 광고관리자가 항목마다 다른 접두어를 사용함)
+// - 구매수:   '공유 항목이 포함된 구매'
+// - 전환값:   '공유 항목의 구매 전환값'
+// - 장바구니: '공유 항목이 포함된 장바구니에 담기'
+// - 기타:     두 접두어 모두 시도
+const SHARED_COLUMN_MAP = {
+  '구매':              ['공유 항목이 포함된 구매',            '공유 항목의 구매'],
+  '구매 전환값':       ['공유 항목의 구매 전환값',            '공유 항목이 포함된 구매 전환값'],
+  '장바구니에 담기':   ['공유 항목이 포함된 장바구니에 담기', '공유 항목의 장바구니에 담기'],
+  '랜딩 페이지 조회':  ['공유 항목이 포함된 랜딩 페이지 조회','공유 항목의 랜딩 페이지 조회'],
+  '결제 시작':         ['공유 항목이 포함된 결제 시작',        '공유 항목의 결제 시작'],
+};
+
 // 채널에 따라 올바른 전환 컬럼 값 반환
 function convNum(r, baseKey) {
-  // API에서 직접 가져온 데이터는 컬럼명이 표준 형태 → 공유항목 구분 불필요
+  // API에서 직접 가져온 데이터는 표준 컬럼명 사용 (공유항목 구분 불필요)
   if (r.__apiRow) return getNum(r, baseKey);
   const ch = r.__channel || '';
   const accountId = r.__accountId || '';
   if (isSharedChannel(ch) || isSharedChannel(accountId)) {
-    return getNum(r, '공유 항목의 ' + baseKey);
+    // 실제 엑셀 컬럼명은 항목마다 접두어가 다름 → SHARED_COLUMN_MAP 우선 참조
+    const candidates = SHARED_COLUMN_MAP[baseKey]
+      || ['공유 항목이 포함된 ' + baseKey, '공유 항목의 ' + baseKey];
+    return getNum(r, ...candidates);
   }
   return getNum(r, baseKey);
 }
