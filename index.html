@@ -3156,6 +3156,17 @@ async function fetchAccountInsights(accountId, channelName, dateFrom, dateTo, to
     'spend', 'actions', 'action_values'
   ].join(',');
 
+  // 브스·컬리는 공유 픽셀(Collaborative Ads) 계정:
+  // Meta API에서 전환 데이터가 'collaborative_ads.*' action_type으로 내려옴
+  // → 먼저 collaborative_ads.* 를 읽고, 없으면 standard action으로 폴백
+  const isShared = SHARED_ACCOUNT_IDS.has(accountId);
+
+  // action_type 이름 선택 헬퍼: 공유계정이면 collaborative_ads 우선, 없으면 표준
+  function pickAction(actions, collab, standard) {
+    const collabVal = getActionValue(actions, collab);
+    return collabVal > 0 ? collabVal : getActionValue(actions, standard);
+  }
+
   const timeRange = JSON.stringify({ since: dateFrom, until: dateTo });
   let rows = [];
   let url = `https://graph.facebook.com/v19.0/${accountId}/insights`
@@ -3179,31 +3190,47 @@ async function fetchAccountInsights(accountId, channelName, dateFrom, dateTo, to
 
     const items = data.data || [];
     items.forEach(item => {
-      const objective   = item.objective || '';
-      const mappedGoal  = OBJECTIVE_MAP[objective] || objective || 'OUTCOME_SALES';
-      const actions     = item.actions || [];
-      const actionVals  = item.action_values || [];
+      const objective  = item.objective || '';
+      const mappedGoal = OBJECTIVE_MAP[objective] || objective || 'OUTCOME_SALES';
+      const actions    = item.actions     || [];
+      const actionVals = item.action_values || [];
+
+      // 전환 지표 추출 — 공유 픽셀 계정은 collaborative_ads.* 우선
+      const purchase    = isShared
+        ? pickAction(actions,    'collaborative_ads.purchase',          'purchase')
+        : getActionValue(actions, 'purchase');
+      const purchaseVal = isShared
+        ? pickAction(actionVals, 'collaborative_ads.purchase',          'purchase')
+        : getActionValue(actionVals, 'purchase');
+      const addToCart   = isShared
+        ? pickAction(actions,    'collaborative_ads.add_to_cart',       'add_to_cart')
+        : getActionValue(actions, 'add_to_cart');
+      const lpView      = isShared
+        ? pickAction(actions,    'collaborative_ads.landing_page_view', 'landing_page_view')
+        : getActionValue(actions, 'landing_page_view');
+      const checkout    = isShared
+        ? pickAction(actions,    'collaborative_ads.initiate_checkout', 'initiate_checkout')
+        : getActionValue(actions, 'initiate_checkout');
 
       rows.push({
-        '광고 ID'              : item.ad_id    || '',
-        '광고 이름'            : item.ad_name  || '',
-        '캠페인 이름'          : item.campaign_name || '',
-        '광고 세트 이름'       : item.adset_name    || '',
-        '일'                   : item.date_start    || '',  // time_increment=1 → date_start = 해당 일
-        '목표'                 : mappedGoal,
-        '노출'                 : item.impressions   || '0',
-        '도달'                 : item.reach         || '0',
-        '링크 클릭'            : item.inline_link_clicks || '0',
-        '지출 금액 (KRW)'      : item.spend         || '0',
-        // 전환 지표 — API는 표준 컬럼명으로 직접 기록 (__apiRow=true 이면 convNum 이 공유항목 컬럼 안 찾음)
-        '구매'                 : String(getActionValue(actions,     'purchase')),
-        '구매 전환값'          : String(getActionValue(actionVals,  'purchase')),
-        '장바구니에 담기'      : String(getActionValue(actions,     'add_to_cart')),
-        '랜딩 페이지 조회'     : String(getActionValue(actions,     'landing_page_view')),
-        '결제 시작'            : String(getActionValue(actions,     'initiate_checkout')),
-        '__channel'            : channelName,
-        '__accountId'          : accountId,
-        '__apiRow'             : true,   // ← API 출처 플래그: convNum 이 공유항목 로직 건너뜀
+        '광고 ID'         : item.ad_id          || '',
+        '광고 이름'       : item.ad_name         || '',
+        '캠페인 이름'     : item.campaign_name   || '',
+        '광고 세트 이름'  : item.adset_name      || '',
+        '일'              : item.date_start      || '',
+        '목표'            : mappedGoal,
+        '노출'            : item.impressions     || '0',
+        '도달'            : item.reach           || '0',
+        '링크 클릭'       : item.inline_link_clicks || '0',
+        '지출 금액 (KRW)' : item.spend           || '0',
+        '구매'            : String(purchase),
+        '구매 전환값'     : String(purchaseVal),
+        '장바구니에 담기' : String(addToCart),
+        '랜딩 페이지 조회': String(lpView),
+        '결제 시작'       : String(checkout),
+        '__channel'       : channelName,
+        '__accountId'     : accountId,
+        '__apiRow'        : true,
       });
     });
 
