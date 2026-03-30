@@ -135,6 +135,57 @@ body {
 .meta-api-btn:hover { border-color: #1877f2; color: #1877f2; }
 .meta-api-btn.connected { border-color: #1877f2; color: #1877f2; background: #e7f0fd; }
 
+/* ── 데이터 동기화 버튼 ── */
+.sync-data-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.sync-data-btn:hover { background: #2f4dbf; }
+.sync-data-btn.syncing { opacity: 0.75; cursor: wait; }
+
+/* ── API 동기화 모달 ── */
+.api-sync-modal { max-width: 520px; }
+.api-sync-section { margin-bottom: 18px; }
+.api-sync-section label.api-label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--ink2);
+  margin-bottom: 6px;
+}
+.api-account-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.api-account-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border2);
+  border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--ink2);
+  transition: all 0.15s; user-select: none;
+}
+.api-account-chip.selected {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-light);
+}
+.api-date-row { display: flex; align-items: center; gap: 8px; }
+.api-date-row input[type=date] {
+  padding: 7px 10px; border: 1.5px solid var(--border2); border-radius: 8px;
+  font-size: 12px; font-family: 'Pretendard', sans-serif; color: var(--ink);
+  background: #fff;
+}
+#apiSyncProgress {
+  display: none; padding: 12px 14px; border-radius: 8px;
+  background: var(--accent-light); font-size: 12px; font-weight: 600; color: var(--accent);
+  margin-bottom: 12px; line-height: 1.6;
+}
+#apiSyncProgress.error { background: #fff0f3; color: #c91e3a; }
+#apiSyncProgress.success { background: #e6f8f3; color: #0a7a5a; }
+
 /* ── 소재 썸네일 ── */
 .card-thumb {
   width: 100%;
@@ -639,7 +690,8 @@ input[type="number"] { width: 60px; }
   .upload-btn { padding: 6px 10px; font-size: 11px; }
   .export-btn  { padding: 6px 10px; font-size: 11px; }
   .github-btn  { padding: 6px 10px; font-size: 11px; }
-  .meta-api-btn { padding: 6px 10px; font-size: 11px; }
+  .meta-api-btn  { padding: 6px 10px; font-size: 11px; }
+  .sync-data-btn { padding: 6px 10px; font-size: 11px; }
 
   /* 레이아웃 */
   .page { padding: 14px 12px 80px; }
@@ -710,6 +762,44 @@ input[type="number"] { width: 60px; }
   .topbar-logo { font-size: 13px; }
   .tray-slot { width: 120px; }
 }
+
+/* ── PERIOD COMPARISON ANALYSIS ── */
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.analysis-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.analysis-label { font-size: 10px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.analysis-val   { font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; }
+.analysis-comp  { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+.analysis-delta { font-size: 12px; font-weight: 700; margin-top: 4px; }
+.delta-up   { color: var(--success); }
+.delta-down { color: var(--danger); }
+.delta-flat { color: var(--ink3); }
+.analysis-insight {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.8;
+}
+.analysis-insight .insight-title {
+  font-size: 11px; font-weight: 700; color: var(--ink3);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+}
+.insight-point { margin-bottom: 6px; }
+.insight-point:last-child { margin-bottom: 0; }
 
 /* ── DRAG ── */
 .creative-card[draggable="true"] { cursor: grab; }
@@ -999,6 +1089,9 @@ input[type="number"] { width: 60px; }
   <div class="topbar-right">
     <div id="fileChips" style="display:none;"></div>
     <div id="syncStatus" class="sync-status"></div>
+    <button class="sync-data-btn" id="syncDataBtn" onclick="openSyncModal()" title="Meta API로 광고 성과 데이터 동기화">
+      📡 데이터 동기화
+    </button>
     <button class="meta-api-btn" id="metaApiBtn" onclick="openMetaModal()" title="Meta API 연동 — 소재 썸네일 자동 로드">
       📷 소재 이미지
     </button>
@@ -1080,23 +1173,112 @@ input[type="number"] { width: 60px; }
   </div>
 </div>
 
+<!-- API SYNC MODAL -->
+<div class="compare-modal-bg" id="apiSyncModalBg" onclick="closeSyncModalOnBg(event)">
+  <div class="compare-modal api-sync-modal">
+    <div class="modal-header">
+      <div class="modal-title">📡 Meta API 데이터 동기화</div>
+      <div class="btn-modal-close" onclick="closeSyncModal()">✕</div>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <!-- 토큰 -->
+      <div class="api-sync-section" id="syncTokenSection">
+        <!-- 저장된 토큰 있을 때: 연결됨 상태 -->
+        <div id="syncTokenSaved" style="display:none;align-items:center;gap:10px;padding:10px 14px;
+          background:#e6f8f3;border-radius:8px;border:1.5px solid #0ca67844;">
+          <span style="font-size:16px;">✓</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#0a7a5a;">토큰 연결됨</div>
+            <div id="syncTokenHint" style="font-size:11px;color:#0a7a5a88;margin-top:1px;"></div>
+          </div>
+          <button onclick="showSyncTokenInput()"
+            style="padding:4px 10px;border:1px solid #0ca67866;border-radius:6px;
+                   font-size:11px;font-weight:600;color:#0a7a5a;background:transparent;cursor:pointer;
+                   font-family:'Pretendard',sans-serif;">변경</button>
+        </div>
+        <!-- 토큰 없을 때: 입력 필드 -->
+        <div id="syncTokenInput">
+          <label class="api-label">
+            Meta 액세스 토큰 <span class="gh-required">*</span>
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="gh-link">Graph API Explorer →</a>
+          </label>
+          <input class="gh-input" id="syncToken" type="password" placeholder="EAAxxxxxxxxxxxxxxx">
+          <div class="gh-hint" style="margin-top:5px;">
+            <b>ads_read</b> 권한이 필요해요. 한 번 입력하면 다음부터 자동으로 사용돼요.
+          </div>
+        </div>
+      </div>
+      <!-- 기간 -->
+      <div class="api-sync-section">
+        <label class="api-label">기간</label>
+        <div class="api-date-row">
+          <input type="date" id="syncDateFrom">
+          <span style="color:var(--ink3);font-size:12px;">~</span>
+          <input type="date" id="syncDateTo">
+          <div style="display:flex;gap:6px;margin-left:4px;">
+            <button onclick="setSyncPreset(7)"  style="padding:5px 9px;border:1px solid var(--border2);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;font-family:'Pretendard',sans-serif;">7일</button>
+            <button onclick="setSyncPreset(30)" style="padding:5px 9px;border:1px solid var(--border2);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;font-family:'Pretendard',sans-serif;">30일</button>
+            <button onclick="setSyncPreset(90)" style="padding:5px 9px;border:1px solid var(--border2);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;font-family:'Pretendard',sans-serif;">90일</button>
+          </div>
+        </div>
+      </div>
+      <!-- 계정 선택 -->
+      <div class="api-sync-section">
+        <label class="api-label">계정</label>
+        <div class="api-account-list">
+          <div class="api-account-chip selected" data-acct="act_914056404233971" data-name="공식몰" onclick="toggleSyncAccount(this)">
+            <span>공식몰</span>
+          </div>
+          <div class="api-account-chip selected" data-acct="act_4070941403163951" data-name="브스" onclick="toggleSyncAccount(this)">
+            <span>브스</span>
+          </div>
+          <div class="api-account-chip selected" data-acct="act_725945530284711" data-name="컬리" onclick="toggleSyncAccount(this)">
+            <span>컬리</span>
+          </div>
+        </div>
+      </div>
+      <!-- 진행 상황 -->
+      <div id="apiSyncProgress"></div>
+      <!-- 버튼 -->
+      <div style="display:flex;gap:8px;">
+        <button class="btn-apply" style="flex:1" id="btnStartSync" onclick="startSync()">📡 동기화 시작</button>
+        <button class="btn-tray-clear" onclick="closeSyncModal()" style="background:var(--bg);">취소</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- UPLOAD SCREEN -->
 <div id="uploadScreen" class="upload-screen">
-  <div class="upload-zone" id="dropzone"
-    ondragover="event.preventDefault();this.classList.add('drag')"
-    ondragleave="this.classList.remove('drag')"
-    ondrop="handleDrop(event)"
-    onclick="document.getElementById('fileInput').click()">
-    <div class="upload-icon">📊</div>
-    <div class="upload-title">메타 광고 로우데이터 업로드</div>
-    <div class="upload-sub">광고관리자에서 내보낸 .xlsx 파일을<br>여기에 드래그하거나 클릭해서 선택하세요</div>
-    <div class="upload-hint">
-      <b>채널 자동 구분:</b> 파일명 앞 단어로 채널을 인식합니다<br>
-      <span class="ch-tag">브스</span>브스-소재-리포트.xlsx &nbsp;→ 채널: 브스<br>
-      <span class="ch-tag">공식몰</span>공식몰-소재-리포트.xlsx &nbsp;→ 채널: 공식몰<br>
-      <span class="ch-tag">컬리</span>컬리-소재-리포트.xlsx &nbsp;→ 채널: 컬리<br>
-      <br>
-      <b>여러 파일 동시 업로드 가능 · 누적 저장됨</b>
+  <div style="text-align:center;max-width:480px;">
+    <!-- Primary: API sync -->
+    <div style="margin-bottom:32px;">
+      <div style="font-size:48px;margin-bottom:12px;">📡</div>
+      <div style="font-size:20px;font-weight:800;color:var(--ink);margin-bottom:8px;">Meta API로 데이터 동기화</div>
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:20px;line-height:1.7;">
+        Meta 액세스 토큰을 입력하면 공식몰·브스·컬리<br>광고 성과 데이터를 바로 불러올 수 있어요
+      </div>
+      <button class="sync-data-btn" onclick="openSyncModal()"
+        style="padding:12px 28px;font-size:14px;border-radius:10px;margin:0 auto;">
+        📡 데이터 동기화 시작
+      </button>
+    </div>
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:12px;color:var(--ink3);">또는</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+    <!-- Secondary: Excel upload -->
+    <div class="upload-zone" id="dropzone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)"
+      onclick="document.getElementById('fileInput').click()"
+      style="padding:20px 24px;">
+      <div style="font-size:24px;margin-bottom:8px;">📂</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink2);margin-bottom:4px;">엑셀 파일 업로드</div>
+      <div style="font-size:12px;color:var(--ink3);">광고관리자에서 내보낸 .xlsx 파일 드래그 또는 클릭</div>
     </div>
   </div>
 </div>
@@ -1122,6 +1304,20 @@ input[type="number"] { width: 60px; }
       <input type="date" id="dateFrom">
       <span style="color:var(--ink3);font-size:12px;">~</span>
       <input type="date" id="dateTo">
+      <button id="btnCompPeriodToggle" onclick="toggleComparePeriod()"
+        style="padding:5px 10px;border:1.5px dashed var(--border2);border-radius:7px;
+               font-size:11px;font-weight:600;color:var(--ink3);background:transparent;
+               cursor:pointer;white-space:nowrap;transition:all 0.15s;"
+        title="비교 기간 선택">＋ 비교 기간</button>
+    </div>
+    <!-- 비교 기간 (기본 숨김) -->
+    <div class="filter-group" id="comparePeriodGroup" style="display:none;">
+      <span class="filter-label" style="color:#e67700;">vs</span>
+      <input type="date" id="dateCompFrom"
+        style="border-color:#e6770066;background:#fff8f0;">
+      <span style="color:var(--ink3);font-size:12px;">~</span>
+      <input type="date" id="dateCompTo"
+        style="border-color:#e6770066;background:#fff8f0;">
     </div>
     <div class="filter-sep"></div>
 
@@ -1158,7 +1354,7 @@ input[type="number"] { width: 60px; }
         <option value="지출">지출 금액</option>
         <option value="노출">노출</option>
         <option value="링크클릭">링크 클릭</option>
-        <option value="구매">구매수</option>
+        <option value="구매" selected>구매수</option>
         <option value="ROAS">ROAS</option>
         <option value="CTR">CTR (높은순)</option>
         <option value="CPA">구매당 비용 (낮은순)</option>
@@ -1216,6 +1412,22 @@ input[type="number"] { width: 60px; }
   </div>
 
   <div class="cards-grid" id="cardsGrid"></div>
+
+  <!-- PERIOD COMPARISON ANALYSIS -->
+  <div id="periodAnalysisSection" style="display:none;margin-bottom:28px;">
+    <div class="section-head" style="margin-top:8px;">
+      <div class="section-title">
+        📊 기간 비교 분석
+        <span class="section-badge badge-all" id="analysisBadge"></span>
+      </div>
+      <button onclick="toggleComparePeriod()"
+        style="padding:5px 12px;border:1px solid var(--border2);border-radius:7px;
+               font-size:11px;color:var(--ink3);background:var(--bg);cursor:pointer;">
+        비교 닫기 ✕
+      </button>
+    </div>
+    <div id="periodAnalysisContent"></div>
+  </div>
 
   <!-- FOOTER -->
   <div class="dash-footer">
@@ -1294,12 +1506,60 @@ let AGG = {};
   } catch(e) {}
 })();
 
-// ── 채널 추출 (파일명 첫 단어) ──
+// ── 광고 계정 ID → 채널명 매핑 ──
+const ACCOUNT_ID_MAP = {
+  'act_4070941403163951': '브스',
+  'act_914056404233971':  '공식몰',
+  'act_725945530284711':  '컬리',
+};
+// '공유 항목의' 컬럼을 사용하는 계정 ID 집합 (브스·컬리)
+const SHARED_ACCOUNT_IDS = new Set(['act_4070941403163951', 'act_725945530284711']);
+
+// ── Meta API 캠페인 목적 → 대시보드 탭 매핑 ──
+const OBJECTIVE_MAP = {
+  'OUTCOME_SALES':         'OUTCOME_SALES',
+  'OUTCOME_TRAFFIC':       'LINK_CLICKS',
+  'OUTCOME_AWARENESS':     'OUTCOME_AWARENESS',
+  'OUTCOME_ENGAGEMENT':    'LINK_CLICKS',
+  'OUTCOME_LEADS':         'LINK_CLICKS',
+  'CONVERSIONS':           'OUTCOME_SALES',
+  'PRODUCT_CATALOG_SALES': 'OUTCOME_SALES',
+  'LINK_CLICKS':           'LINK_CLICKS',
+  'BRAND_AWARENESS':       'OUTCOME_AWARENESS',
+  'REACH':                 'OUTCOME_AWARENESS',
+  'VIDEO_VIEWS':           'OUTCOME_AWARENESS',
+};
+
+// ── 광고 계정 목록 ──
+const META_ACCOUNTS = [
+  { id: 'act_914056404233971',  name: '공식몰' },
+  { id: 'act_4070941403163951', name: '브스'   },
+  { id: 'act_725945530284711',  name: '컬리'   },
+];
+
+// ── 채널 추출 (파일명 우선 → 계정ID 인식 → 첫 단어 폴백) ──
 function extractChannel(filename) {
-  // 확장자 제거 후 첫 단어 (하이픈, 공백, 언더스코어 앞)
   const base = filename.replace(/\.xlsx?$/i, '');
+  // 파일명에 act_XXXXXXXX 형태 계정 ID가 있으면 채널명으로 변환
+  const actMatch = base.match(/act_\d+/i);
+  if (actMatch) {
+    const normalizedId = actMatch[0].replace(/act_/i, 'act_');
+    return ACCOUNT_ID_MAP[normalizedId] || normalizedId;
+  }
+  // 파일명 첫 단어 (하이픈·공백·언더스코어 앞)
   const m = base.match(/^([^_\-\s]+)/);
   return m ? m[1] : base;
+}
+
+// 데이터 행에서 계정 ID 컬럼 읽기 (Meta 광고관리자 내보내기 컬럼명 후보)
+function getAccountIdFromRow(row) {
+  const candidates = ['광고 계정 ID', '계정 ID', 'Account ID', '계정'];
+  for (const k of candidates) {
+    const v = String(row[k] || '').trim();
+    if (v.match(/^act_\d+$/i)) return v.replace(/act_/i, 'act_');
+    if (v.match(/^\d{15,}$/)) return 'act_' + v; // 숫자만 있는 경우
+  }
+  return '';
 }
 
 // ── 컬럼 통합 읽기 (브스·공식몰 모두 지원) ──
@@ -1331,7 +1591,7 @@ function loadFile(input) {
 }
 
 function processFile(file) {
-  const channel = extractChannel(file.name);
+  const fileChannel = extractChannel(file.name); // 파일명 기반 채널
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -1339,8 +1599,17 @@ function processFile(file) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const newRows = XLSX.utils.sheet_to_json(ws, { raw:false });
 
-      // 채널 태깅
-      newRows.forEach(r => { r.__channel = channel; });
+      // 첫 번째 데이터 행에서 계정 ID 감지 → 파일명보다 우선 적용
+      const firstAccountId = newRows.length ? getAccountIdFromRow(newRows[0]) : '';
+      const channel = firstAccountId
+        ? (ACCOUNT_ID_MAP[firstAccountId] || fileChannel)
+        : fileChannel;
+
+      // 채널 + 계정 ID 태깅
+      newRows.forEach(r => {
+        r.__channel   = channel;
+        r.__accountId = firstAccountId || getAccountIdFromRow(r) || '';
+      });
 
       // 누적 + 중복 시 덮어쓰기 (광고ID + 일 + 채널 기준)
       const existingKeyIndex = {};
@@ -1444,6 +1713,26 @@ function clearAll() {
   try { localStorage.removeItem('meta_ads_raw'); localStorage.removeItem('meta_ads_files'); } catch(e) {}
 }
 
+// ── '공유 항목의' 컬럼 사용 여부 판단 (채널명 or 계정 ID 모두 인식) ──
+// 브스(act_4070941403163951)·컬리(act_725945530284711) → 공유 항목의 컬럼 사용
+function isSharedChannel(ch) {
+  if (!ch) return false;
+  if (SHARED_ACCOUNT_IDS.has(ch)) return true;           // 계정 ID 직접 비교
+  return ['브스', '컬리'].includes(ch);                   // 채널명 비교
+}
+
+// 채널에 따라 올바른 전환 컬럼 값 반환
+function convNum(r, baseKey) {
+  // API에서 직접 가져온 데이터는 컬럼명이 표준 형태 → 공유항목 구분 불필요
+  if (r.__apiRow) return getNum(r, baseKey);
+  const ch = r.__channel || '';
+  const accountId = r.__accountId || '';
+  if (isSharedChannel(ch) || isSharedChannel(accountId)) {
+    return getNum(r, '공유 항목의 ' + baseKey);
+  }
+  return getNum(r, baseKey);
+}
+
 // ── 집계 ──
 function buildAggregated() {
   AGG = {};
@@ -1470,7 +1759,7 @@ function buildAggregated() {
         channel,
         dates   : [],
         지출:0, 노출:0, 도달:0,
-        링크클릭:0, 구매:0, 전환값:0, 장바구니:0,
+        링크클릭:0, 구매:0, 전환값:0, 장바구니:0, 랜딩조회:0, 결제시작:0,
       };
     }
     if (date) AGG[id].dates.push(date);
@@ -1478,11 +1767,12 @@ function buildAggregated() {
     AGG[id].노출     += getNum(r, '노출');
     AGG[id].도달     += getNum(r, '도달');
     AGG[id].링크클릭 += getNum(r, '링크 클릭');
-    // 구매: 공식몰='구매', 브스='공유 항목이 포함된 구매'
-    AGG[id].구매     += getNum(r, '구매', '공유 항목이 포함된 구매');
-    // 전환값: 공식몰='구매 전환값', 브스='공유 항목의 구매 전환값'
-    AGG[id].전환값   += getNum(r, '구매 전환값', '공유 항목의 구매 전환값');
-    AGG[id].장바구니 += getNum(r, '공유 항목이 포함된 장바구니에 담기', '장바구니에 담기');
+    // 채널에 따라 올바른 전환 컬럼 사용 (브스·컬리 → 공유 항목의, 공식몰 → 일반)
+    AGG[id].구매     += convNum(r, '구매');
+    AGG[id].전환값   += convNum(r, '구매 전환값');
+    AGG[id].장바구니 += convNum(r, '장바구니에 담기');
+    AGG[id].랜딩조회 += convNum(r, '랜딩 페이지 조회');
+    AGG[id].결제시작 += convNum(r, '결제 시작');
   });
   Object.values(AGG).forEach(a => {
     a.ROAS = a.지출 > 0 ? +(a.전환값 / a.지출).toFixed(2) : 0;
@@ -1621,7 +1911,7 @@ function applyFilters() {
         adset   : rawAdset    || fallbackAdset,
         channel,
         dates:[], 지출:0, 노출:0, 도달:0,
-        링크클릭:0, 구매:0, 전환값:0, 장바구니:0,
+        링크클릭:0, 구매:0, 전환값:0, 장바구니:0, 랜딩조회:0, 결제시작:0,
       };
     }
     filtered[id].dates.push(date);
@@ -1629,9 +1919,12 @@ function applyFilters() {
     filtered[id].노출     += getNum(r, '노출');
     filtered[id].도달     += getNum(r, '도달');
     filtered[id].링크클릭 += getNum(r, '링크 클릭');
-    filtered[id].구매     += getNum(r, '구매', '공유 항목이 포함된 구매');
-    filtered[id].전환값   += getNum(r, '구매 전환값', '공유 항목의 구매 전환값');
-    filtered[id].장바구니 += getNum(r, '공유 항목이 포함된 장바구니에 담기', '장바구니에 담기');
+    // 채널에 따라 올바른 전환 컬럼 사용 (브스·컬리 → 공유 항목의, 공식몰 → 일반)
+    filtered[id].구매     += convNum(r, '구매');
+    filtered[id].전환값   += convNum(r, '구매 전환값');
+    filtered[id].장바구니 += convNum(r, '장바구니에 담기');
+    filtered[id].랜딩조회 += convNum(r, '랜딩 페이지 조회');
+    filtered[id].결제시작 += convNum(r, '결제 시작');
   });
 
   Object.values(filtered).forEach(a => {
@@ -1658,6 +1951,28 @@ function applyFilters() {
   renderKPIs();
   renderChartPie();
   renderTab(currentTab);
+
+  // 비교 기간 분석
+  if (comparePeriodActive) {
+    const compFrom = document.getElementById('dateCompFrom').value;
+    const compTo   = document.getElementById('dateCompTo').value;
+    if (compFrom && compTo) {
+      const compData = aggregateForPeriod(
+        compFrom, compTo,
+        currentChannel,
+        document.getElementById('filterCampaign').value,
+        document.getElementById('filterAdset').value,
+        searchQ
+      );
+      renderPeriodAnalysis(
+        FILTERED, compData,
+        `${from} ~ ${to}`,
+        `${compFrom} ~ ${compTo}`
+      );
+    }
+  } else {
+    document.getElementById('periodAnalysisSection').style.display = 'none';
+  }
 }
 
 function setTab(tab) {
@@ -1807,14 +2122,18 @@ function renderTab(tab) {
       ? `<span class="channel-badge" style="background:${chColor.bg};color:${chColor.fg};border:1px solid ${chColor.border};">📍 ${r.channel}</span>`
       : '';
 
-    // 지표: 구매 캠페인은 4개 (ROAS, 구매수, CPA, CPC)
+    // 지표: 구매 캠페인 — 3열 2행 (ROAS, 구매수, CPA / CPC, CTR, CPM)
     let metricsHtml = '';
     if (r.goal === 'OUTCOME_SALES') {
-      metricsHtml = `<div class="metrics-grid cols-4">
+      const cpmDisplay = r.CPM ? '₩'+fmtNum(r.CPM) : '-';
+      const ctrDisplay = r.CTR ? r.CTR+'%' : '-';
+      metricsHtml = `<div class="metrics-grid cols-3">
         <div class="metric-item"><div class="metric-val ${roasClass}">${r.ROAS ? r.ROAS+'x' : '-'}</div><div class="metric-lbl">ROAS</div></div>
         <div class="metric-item"><div class="metric-val">${fmtNum(r.구매)}건</div><div class="metric-lbl">구매수</div></div>
         <div class="metric-item"><div class="metric-val ${cpaClass}">${cpaDisplay}</div><div class="metric-lbl">구매당 비용</div></div>
         <div class="metric-item"><div class="metric-val">${cpcDisplay}</div><div class="metric-lbl">CPC</div></div>
+        <div class="metric-item"><div class="metric-val">${ctrDisplay}</div><div class="metric-lbl">CTR</div></div>
+        <div class="metric-item"><div class="metric-val">${cpmDisplay}</div><div class="metric-lbl">CPM</div></div>
       </div>`;
     } else if (r.goal === 'LINK_CLICKS') {
       metricsHtml = `<div class="metrics-grid cols-4">
@@ -2266,6 +2585,202 @@ function renderCompareModal() {
   document.head.appendChild(style);
 })();
 
+// ═══════════════════════════════════════════
+// 기간 비교 분석
+// ═══════════════════════════════════════════
+let comparePeriodActive = false;
+
+function toggleComparePeriod() {
+  comparePeriodActive = !comparePeriodActive;
+  const group  = document.getElementById('comparePeriodGroup');
+  const btn    = document.getElementById('btnCompPeriodToggle');
+  const section = document.getElementById('periodAnalysisSection');
+
+  if (comparePeriodActive) {
+    group.style.display = 'flex';
+    btn.style.borderStyle = 'solid';
+    btn.style.borderColor = '#e67700';
+    btn.style.color = '#e67700';
+    btn.textContent = '비교 기간 ON';
+    // 비교 기간 기본값: 현재 기간과 동일한 길이만큼 이전 기간
+    const from = document.getElementById('dateFrom').value;
+    const to   = document.getElementById('dateTo').value;
+    if (from && to) {
+      const days = Math.round((new Date(to) - new Date(from)) / 86400000);
+      const compTo   = new Date(new Date(from) - 86400000); // from 하루 전
+      const compFrom = new Date(compTo - days * 86400000);
+      document.getElementById('dateCompTo').value   = compTo.toISOString().slice(0,10);
+      document.getElementById('dateCompFrom').value = compFrom.toISOString().slice(0,10);
+    }
+    applyFilters();
+  } else {
+    group.style.display = 'none';
+    btn.style.borderStyle = 'dashed';
+    btn.style.borderColor = 'var(--border2)';
+    btn.style.color = 'var(--ink3)';
+    btn.textContent = '＋ 비교 기간';
+    section.style.display = 'none';
+  }
+}
+
+function aggregateForPeriod(from, to, channel, campaign, adset, searchQ) {
+  const filtered = {};
+  RAW.forEach(r => {
+    const ch = r.__channel || '';
+    if (channel && ch !== channel) return;
+    const id   = (r['광고 ID'] || r['광고 이름']) + '|' + ch;
+    const date = String(r['일']).substring(0,10);
+    if (from && date < from) return;
+    if (to   && date > to)   return;
+
+    if (!filtered[id]) {
+      const rawCampaign = r['캠페인 이름'] || r['캠페인명'] || '';
+      const rawAdset    = r['광고 세트 이름'] || r['광고세트명'] || r['광고세트 이름'] || '';
+      const adName      = r['광고 이름'] || '';
+      const fallbackM   = adName.match(/^\[(.+?)\]/);
+      const fallbackCamp= fallbackM ? fallbackM[1] : '(미분류)';
+      const fallbackBody= adName.replace(/^\[.+?\]\s*/, '');
+      const fallbackAdset = fallbackBody.split('_').slice(0,3).join('_');
+      filtered[id] = {
+        name:adName, id, goal:r['목표']||'',
+        campaign: rawCampaign || fallbackCamp,
+        adset   : rawAdset    || fallbackAdset,
+        channel: ch,
+        지출:0, 노출:0, 도달:0,
+        링크클릭:0, 구매:0, 전환값:0, 장바구니:0, 랜딩조회:0, 결제시작:0,
+      };
+    }
+    filtered[id].지출     += getNum(r, '지출 금액 (KRW)', '지출 금액');
+    filtered[id].노출     += getNum(r, '노출');
+    filtered[id].도달     += getNum(r, '도달');
+    filtered[id].링크클릭 += getNum(r, '링크 클릭');
+    filtered[id].구매     += convNum(r, '구매');
+    filtered[id].전환값   += convNum(r, '구매 전환값');
+    filtered[id].장바구니 += convNum(r, '장바구니에 담기');
+    filtered[id].랜딩조회 += convNum(r, '랜딩 페이지 조회');
+    filtered[id].결제시작 += convNum(r, '결제 시작');
+  });
+
+  let base = Object.values(filtered);
+  if (campaign) base = base.filter(r => r.campaign === campaign);
+  if (adset)    base = base.filter(r => r.adset    === adset);
+  if (searchQ)  base = base.filter(r =>
+    r.name.toLowerCase().includes(searchQ) ||
+    String(r.id).toLowerCase().includes(searchQ)
+  );
+  return base;
+}
+
+function calcTotals(data) {
+  const spend  = data.reduce((s,r)=>s+r.지출,0);
+  const imp    = data.reduce((s,r)=>s+r.노출,0);
+  const click  = data.reduce((s,r)=>s+r.링크클릭,0);
+  const purch  = data.reduce((s,r)=>s+r.구매,0);
+  const conv   = data.reduce((s,r)=>s+r.전환값,0);
+  const cart   = data.reduce((s,r)=>s+r.장바구니,0);
+  const land   = data.reduce((s,r)=>s+r.랜딩조회,0);
+  const check  = data.reduce((s,r)=>s+r.결제시작,0);
+  return {
+    spend, imp, click, purch, conv, cart, land, check,
+    roas : spend > 0  ? +(conv/spend).toFixed(2)    : 0,
+    ctr  : imp   > 0  ? +(click/imp*100).toFixed(2) : 0,
+    cpc  : click > 0  ? Math.round(spend/click)     : null,
+    cpm  : imp   > 0  ? Math.round(spend/imp*1000)  : null,
+    cpa  : purch > 0  ? Math.round(spend/purch)     : null,
+  };
+}
+
+function deltaText(cur, prev, higher='good', fmt='num') {
+  if (!prev || prev === 0) return '';
+  const pct = ((cur - prev) / Math.abs(prev) * 100);
+  const abs = Math.abs(pct).toFixed(1);
+  const up  = pct > 0;
+  const isGood = higher === 'good' ? up : !up; // 낮을수록 좋은 지표(CPC, CPA 등)
+  const cls = Math.abs(pct) < 1 ? 'delta-flat' : isGood ? 'delta-up' : 'delta-down';
+  const sign = up ? '▲' : '▼';
+  return `<span class="analysis-delta ${cls}">${sign} ${abs}%</span>`;
+}
+
+function renderPeriodAnalysis(mainData, compData, mainRange, compRange) {
+  const m = calcTotals(mainData);
+  const c = calcTotals(compData);
+
+  const metrics = [
+    { label:'지출',         cur: m.spend, prev: c.spend, fmt: v=>'₩'+fmtNum(v), higher:'neutral' },
+    { label:'노출',         cur: m.imp,   prev: c.imp,   fmt: fmtNum,            higher:'good' },
+    { label:'링크클릭',     cur: m.click, prev: c.click, fmt: fmtNum,            higher:'good' },
+    { label:'CTR',          cur: m.ctr,   prev: c.ctr,   fmt: v=>v+'%',          higher:'good' },
+    { label:'구매 수',      cur: m.purch, prev: c.purch, fmt: fmtNum,            higher:'good' },
+    { label:'구매전환 금액',cur: m.conv,  prev: c.conv,  fmt: v=>v>0?'₩'+fmtNum(v):'-', higher:'good' },
+    { label:'ROAS',         cur: m.roas,  prev: c.roas,  fmt: v=>v+'x',          higher:'good' },
+    { label:'구매당 비용',  cur: m.cpa,   prev: c.cpa,   fmt: v=>v?'₩'+fmtNum(v):'-', higher:'low' },
+    { label:'CPM',          cur: m.cpm,   prev: c.cpm,   fmt: v=>v?'₩'+fmtNum(v):'-', higher:'low' },
+    { label:'CPC',          cur: m.cpc,   prev: c.cpc,   fmt: v=>v?'₩'+fmtNum(v):'-', higher:'low' },
+    { label:'장바구니',     cur: m.cart,  prev: c.cart,  fmt: fmtNum,            higher:'good' },
+    { label:'랜딩 조회',    cur: m.land,  prev: c.land,  fmt: fmtNum,            higher:'good' },
+  ];
+
+  // 분석 카드
+  const cardsHtml = metrics.map(mt => {
+    const delta = deltaText(mt.cur, mt.prev, mt.higher);
+    const prevDisp = mt.prev !== null && mt.prev !== undefined ? mt.fmt(mt.prev) : '-';
+    return `<div class="analysis-card">
+      <div class="analysis-label">${mt.label}</div>
+      <div class="analysis-val">${mt.fmt(mt.cur)}</div>
+      <div class="analysis-comp">비교: ${prevDisp}</div>
+      ${delta}
+    </div>`;
+  }).join('');
+
+  // 텍스트 인사이트 생성
+  const insights = [];
+  if (c.spend > 0) {
+    const spendDiff = ((m.spend - c.spend) / c.spend * 100).toFixed(1);
+    insights.push(`💰 <b>지출</b>이 이전 기간 대비 <b>${Math.abs(spendDiff)}%</b> ${m.spend >= c.spend ? '증가' : '감소'}했어요.`);
+  }
+  if (c.purch > 0) {
+    const purchDiff = ((m.purch - c.purch) / c.purch * 100).toFixed(1);
+    const dir = m.purch >= c.purch ? '증가' : '감소';
+    insights.push(`🛍️ <b>구매 수</b>가 이전 기간 대비 <b>${Math.abs(purchDiff)}%</b> ${dir}했어요. (${fmtNum(c.purch)}건 → ${fmtNum(m.purch)}건)`);
+  }
+  if (c.roas > 0 && m.roas > 0) {
+    const roasDiff = ((m.roas - c.roas) / c.roas * 100).toFixed(1);
+    const dir = m.roas >= c.roas ? '개선' : '하락';
+    insights.push(`📈 <b>ROAS</b>가 ${c.roas}x에서 ${m.roas}x로 <b>${dir}</b>했어요 (${Math.abs(roasDiff)}% 변화).`);
+  }
+  if (c.ctr > 0) {
+    const ctrDiff = ((m.ctr - c.ctr) / c.ctr * 100).toFixed(1);
+    insights.push(`🖱️ <b>CTR</b>이 ${c.ctr}%에서 ${m.ctr}%로 ${m.ctr >= c.ctr ? '상승' : '하락'}했어요.`);
+  }
+  if (c.cpa && m.cpa) {
+    const cpaDiff = ((m.cpa - c.cpa) / c.cpa * 100).toFixed(1);
+    const dir = m.cpa <= c.cpa ? '개선' : '악화';
+    insights.push(`💸 <b>구매당 비용(CPA)</b>이 ₩${fmtNum(c.cpa)}에서 ₩${fmtNum(m.cpa)}으로 <b>${dir}</b>됐어요.`);
+  }
+  if (m.cart > 0 && m.purch > 0) {
+    const cartToCart = (m.cart / m.click * 100).toFixed(1);
+    insights.push(`🛒 현재 기간 장바구니 담기 <b>${fmtNum(m.cart)}회</b>, 구매 전환 <b>${fmtNum(m.purch)}건</b> (장바구니 전환율 약 ${(m.purch/m.cart*100).toFixed(1)}%).`);
+  }
+
+  const insightHtml = insights.length
+    ? insights.map(t => `<div class="insight-point">• ${t}</div>`).join('')
+    : '<div style="color:var(--ink3)">비교 데이터가 충분하지 않아 인사이트를 생성하기 어려워요.</div>';
+
+  document.getElementById('periodAnalysisContent').innerHTML = `
+    <div style="font-size:11px;color:var(--ink3);margin-bottom:12px;display:flex;gap:16px;">
+      <span>📅 <b>현재 기간</b>: ${mainRange}</span>
+      <span style="color:#e67700;">vs  <b>비교 기간</b>: ${compRange}</span>
+    </div>
+    <div class="analysis-grid">${cardsHtml}</div>
+    <div class="analysis-insight">
+      <div class="insight-title">🤖 AI 인사이트</div>
+      ${insightHtml}
+    </div>
+  `;
+  document.getElementById('periodAnalysisSection').style.display = 'block';
+  document.getElementById('analysisBadge').textContent = `${mainData.length}개 소재`;
+}
+
 // ── EMBEDDED DATA ENTRY POINT ──
 _loadEmbedded();
 
@@ -2558,6 +3073,253 @@ function showMetaResult(type, msg) {
   el.textContent = msg;
 }
 
+// ═══════════════════════════════════════════
+// META API — 데이터 동기화 (성과 데이터)
+// ═══════════════════════════════════════════
+
+// actions 배열에서 특정 action_type 값 추출
+function getActionValue(actions, type) {
+  if (!Array.isArray(actions)) return 0;
+  const found = actions.find(a => a.action_type === type);
+  return found ? parseFloat(found.value) || 0 : 0;
+}
+
+// ── 동기화 모달 UI ──
+function openSyncModal() {
+  // 토큰 저장 여부에 따라 UI 분기
+  if (META_TOKEN) {
+    // 저장된 토큰 있음 → "연결됨" 상태 표시, 입력 필드 숨김
+    document.getElementById('syncTokenSaved').style.display = 'flex';
+    document.getElementById('syncTokenInput').style.display = 'none';
+    // 토큰 앞 8자만 힌트로 표시 (보안)
+    const hint = META_TOKEN.substring(0, 8) + '••••••••';
+    document.getElementById('syncTokenHint').textContent = hint;
+  } else {
+    // 토큰 없음 → 입력 필드 표시
+    document.getElementById('syncTokenSaved').style.display = 'none';
+    document.getElementById('syncTokenInput').style.display = 'block';
+    document.getElementById('syncToken').value = '';
+  }
+  // 기본 기간: 최근 30일
+  setSyncPreset(30);
+  // 진행 상황 초기화
+  const prog = document.getElementById('apiSyncProgress');
+  prog.style.display = 'none';
+  prog.className = '';
+  prog.textContent = '';
+  document.getElementById('btnStartSync').disabled = false;
+  document.getElementById('apiSyncModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function showSyncTokenInput() {
+  document.getElementById('syncTokenSaved').style.display = 'none';
+  document.getElementById('syncTokenInput').style.display = 'block';
+  document.getElementById('syncToken').value = '';
+  document.getElementById('syncToken').focus();
+}
+
+function closeSyncModal() {
+  document.getElementById('apiSyncModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeSyncModalOnBg(e) {
+  if (e.target === document.getElementById('apiSyncModalBg')) closeSyncModal();
+}
+
+function setSyncPreset(days) {
+  const to   = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  const fmt = d => d.toISOString().substring(0, 10);
+  document.getElementById('syncDateFrom').value = fmt(from);
+  document.getElementById('syncDateTo').value   = fmt(to);
+}
+
+function toggleSyncAccount(chip) {
+  chip.classList.toggle('selected');
+}
+
+function setSyncProgress(msg, type) {
+  const el = document.getElementById('apiSyncProgress');
+  el.style.display = 'block';
+  el.className = type || '';
+  el.innerHTML = msg;
+}
+
+// ── 계정 한 개의 인사이트 페이지네이션 fetch ──
+async function fetchAccountInsights(accountId, channelName, dateFrom, dateTo, token, onProgress) {
+  const fields = [
+    'ad_id', 'ad_name', 'adset_name', 'campaign_name', 'campaign_id',
+    'objective', 'impressions', 'reach', 'inline_link_clicks',
+    'spend', 'actions', 'action_values'
+  ].join(',');
+
+  const timeRange = JSON.stringify({ since: dateFrom, until: dateTo });
+  let rows = [];
+  let url = `https://graph.facebook.com/v19.0/${accountId}/insights`
+    + `?fields=${encodeURIComponent(fields)}`
+    + `&time_range=${encodeURIComponent(timeRange)}`
+    + `&time_increment=1`
+    + `&level=ad`
+    + `&limit=500`
+    + `&access_token=${encodeURIComponent(token)}`;
+
+  let pageNum = 0;
+  while (url) {
+    pageNum++;
+    if (onProgress) onProgress(`${channelName} 데이터 수신 중… (페이지 ${pageNum})`);
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) {
+      throw new Error(`[${channelName}] ${data.error.message}`);
+    }
+
+    const items = data.data || [];
+    items.forEach(item => {
+      const objective   = item.objective || '';
+      const mappedGoal  = OBJECTIVE_MAP[objective] || objective || 'OUTCOME_SALES';
+      const actions     = item.actions || [];
+      const actionVals  = item.action_values || [];
+
+      rows.push({
+        '광고 ID'              : item.ad_id    || '',
+        '광고 이름'            : item.ad_name  || '',
+        '캠페인 이름'          : item.campaign_name || '',
+        '광고 세트 이름'       : item.adset_name    || '',
+        '일'                   : item.date_start    || '',  // time_increment=1 → date_start = 해당 일
+        '목표'                 : mappedGoal,
+        '노출'                 : item.impressions   || '0',
+        '도달'                 : item.reach         || '0',
+        '링크 클릭'            : item.inline_link_clicks || '0',
+        '지출 금액 (KRW)'      : item.spend         || '0',
+        // 전환 지표 — API는 표준 컬럼명으로 직접 기록 (__apiRow=true 이면 convNum 이 공유항목 컬럼 안 찾음)
+        '구매'                 : String(getActionValue(actions,     'purchase')),
+        '구매 전환값'          : String(getActionValue(actionVals,  'purchase')),
+        '장바구니에 담기'      : String(getActionValue(actions,     'add_to_cart')),
+        '랜딩 페이지 조회'     : String(getActionValue(actions,     'landing_page_view')),
+        '결제 시작'            : String(getActionValue(actions,     'initiate_checkout')),
+        '__channel'            : channelName,
+        '__accountId'          : accountId,
+        '__apiRow'             : true,   // ← API 출처 플래그: convNum 이 공유항목 로직 건너뜀
+      });
+    });
+
+    // 다음 페이지 커서
+    url = data.paging && data.paging.next ? data.paging.next : null;
+  }
+  return rows;
+}
+
+// ── 메인 동기화 함수 ──
+async function startSync() {
+  // 입력 필드가 숨겨진 경우(=저장된 토큰 사용) META_TOKEN 그대로 사용
+  const inputVisible = document.getElementById('syncTokenInput').style.display !== 'none';
+  const token = inputVisible
+    ? document.getElementById('syncToken').value.trim()
+    : META_TOKEN;
+  const dateFrom = document.getElementById('syncDateFrom').value;
+  const dateTo   = document.getElementById('syncDateTo').value;
+
+  if (!token)    { setSyncProgress('❗ 액세스 토큰을 입력해주세요', 'error'); return; }
+  if (!dateFrom || !dateTo) { setSyncProgress('❗ 기간을 선택해주세요', 'error'); return; }
+
+  // 선택된 계정
+  const selectedChips = [...document.querySelectorAll('#apiSyncModalBg .api-account-chip.selected')];
+  if (!selectedChips.length) { setSyncProgress('❗ 계정을 하나 이상 선택해주세요', 'error'); return; }
+  const selectedAccounts = selectedChips.map(c => ({ id: c.dataset.acct, name: c.dataset.name }));
+
+  // 토큰 저장
+  META_TOKEN = token;
+  try { localStorage.setItem('meta_ads_token', token); } catch(e) {}
+  updateMetaBtn(true);
+
+  // 동기화 버튼 비활성화
+  const btn = document.getElementById('btnStartSync');
+  btn.disabled = true;
+  document.getElementById('syncDataBtn').classList.add('syncing');
+
+  let totalAdded = 0, totalOverwritten = 0;
+  let allNewRows = [];
+
+  try {
+    for (const acct of selectedAccounts) {
+      setSyncProgress(`<b>${acct.name}</b> 불러오는 중…`, '');
+      const rows = await fetchAccountInsights(
+        acct.id, acct.name, dateFrom, dateTo, token,
+        msg => setSyncProgress(`⏳ ${msg}`, '')
+      );
+      allNewRows = allNewRows.concat(rows);
+      setSyncProgress(`✓ <b>${acct.name}</b>: ${rows.length.toLocaleString()}개 데이터 수신`, '');
+      await new Promise(r => setTimeout(r, 200)); // 짧은 딜레이로 UI 갱신 허용
+    }
+
+    // RAW에 병합 (기존 데이터와 같은 키: 광고ID + 일 + 채널)
+    const existingKeyIndex = {};
+    RAW.forEach((r, i) => {
+      const key = (r['광고 ID'] || r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel || '');
+      existingKeyIndex[key] = i;
+    });
+
+    const toAdd = [];
+    allNewRows.forEach(r => {
+      const key = (r['광고 ID'] || r['광고 이름']) + '|' + r['일'] + '|' + (r.__channel || '');
+      if (key in existingKeyIndex) {
+        RAW[existingKeyIndex[key]] = r;
+        totalOverwritten++;
+      } else {
+        toAdd.push(r);
+      }
+    });
+    RAW = [...RAW, ...toAdd];
+    totalAdded = toAdd.length;
+
+    // 채널 메타 업데이트
+    selectedAccounts.forEach(acct => {
+      getChannelColor(acct.name);
+      const existing = LOADED_FILES.find(f => f.channel === acct.name && f.source === 'api');
+      if (existing) {
+        existing.count += totalAdded + totalOverwritten;
+        existing.date  = dateFrom + ' ~ ' + dateTo;
+      } else {
+        LOADED_FILES.push({
+          name: `API: ${acct.name} (${dateFrom}~${dateTo})`,
+          channel: acct.name,
+          count: allNewRows.filter(r => r.__channel === acct.name).length,
+          added: totalAdded,
+          overwritten: totalOverwritten,
+          source: 'api',
+        });
+      }
+    });
+
+    buildAggregated();
+    renderFileChips();
+    saveToLocal();
+    syncToGithub();
+
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('exportBtn').classList.add('visible');
+    initFilters();
+    applyFilters();
+
+    const summary = `✅ 동기화 완료! +${totalAdded.toLocaleString()}개 추가 · ${totalOverwritten.toLocaleString()}개 갱신<br>`
+      + `<span style="font-weight:400">${dateFrom} ~ ${dateTo} / 총 ${allNewRows.length.toLocaleString()}개 데이터</span>`;
+    setSyncProgress(summary, 'success');
+    showToast(`동기화 완료 · +${totalAdded.toLocaleString()}개 추가`);
+
+    setTimeout(() => closeSyncModal(), 1800);
+  } catch(err) {
+    setSyncProgress('❌ 오류: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('syncDataBtn').classList.remove('syncing');
+  }
+}
+
 // 광고 ID로 썸네일 fetch — 배치로 처리
 async function loadThumbnails(items) {
   if (!items.length) return;
@@ -2633,7 +3395,7 @@ function applyThumb(rowId, info) {
   const el = document.getElementById(elId);
   if (!el) return;
 
-  // position:relative + padding-bottom:100% 같은 요소에 있어야 절대위치 자식 height:100% 정상 동작
+  // 컨테이너: 기본 1:1, 세로형 감지 후 조정
   const wrap = document.createElement('div');
   wrap.id = elId;
   wrap.style.cssText = 'width:100%;position:relative;padding-bottom:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
@@ -2642,8 +3404,18 @@ function applyThumb(rowId, info) {
   img.src = info.thumbUrl;
   img.alt = '소재 썸네일';
   img.loading = 'lazy';
-  // inset:0 으로 상하좌우 모두 0, object-fit:contain 으로 원본 비율 유지
   img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
+
+  img.onload = function() {
+    const ratio = this.naturalHeight / this.naturalWidth;
+    if (ratio > 1.2) {
+      // 세로형(릴스) 소재 — 좌우 여백을 두고 위아래 꽉 채움 (비율 그대로 유지)
+      wrap.style.paddingBottom = (ratio * 100).toFixed(2) + '%';
+      wrap.style.background = '#1a1a1a'; // 세로형은 어두운 배경
+    }
+    // 정방형 또는 가로형 — 1:1 유지, contain으로 품질 보존
+  };
+
   img.onerror = function() {
     this.style.display = 'none';
     const msg = document.createElement('div');
@@ -2707,7 +3479,7 @@ function loadFromLocal() {
   // ?admin=true 일 때만 관리 버튼 표시, 아니면 모두 숨김
   const isAdmin = new URLSearchParams(location.search).get('admin') === 'true';
   if (!isAdmin) {
-    ['metaApiBtn','githubBtn','exportBtn','syncStatus'].forEach(id => {
+    ['syncDataBtn','metaApiBtn','githubBtn','exportBtn','syncStatus'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
