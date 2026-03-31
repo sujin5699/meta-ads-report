@@ -1322,6 +1322,21 @@ input[type="number"] { width: 60px; }
         <button class="btn-apply" style="flex:1" id="btnStartSync" onclick="startSync()">📡 동기화 시작</button>
         <button class="btn-tray-clear" onclick="closeSyncModal()" style="background:var(--bg);">취소</button>
       </div>
+      <!-- 진단 버튼 (접혀있음) -->
+      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+        <button onclick="runApiDiagnosis()" id="btnDiagnosis"
+          style="width:100%;padding:8px 14px;background:var(--bg);border:1.5px dashed var(--border2);
+                 border-radius:8px;font-size:12px;font-weight:600;color:var(--ink2);
+                 cursor:pointer;font-family:'Pretendard',sans-serif;transition:all 0.15s;"
+          onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+          onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--ink2)'">
+          🔍 전환 데이터 action_type 진단 (브스·컬리)
+        </button>
+        <div id="apiDiagnosisResult" style="display:none;margin-top:10px;padding:12px;
+          background:#f8f9ff;border-radius:8px;border:1px solid var(--border);
+          font-size:11.5px;line-height:1.7;font-family:monospace;overflow-x:auto;
+          max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -3555,6 +3570,152 @@ function setSyncPreset(days) {
 
 function toggleSyncAccount(chip) {
   chip.classList.toggle('selected');
+}
+
+// ── API 전환 action_type 진단 ──
+// 브스·컬리 계정에서 최근 1일치 데이터를 소량(limit=3) 가져와
+// 실제 actions 배열에 어떤 action_type이 들어있는지 보여줌
+async function runApiDiagnosis() {
+  const resultEl = document.getElementById('apiDiagnosisResult');
+  const btn = document.getElementById('btnDiagnosis');
+  resultEl.style.display = 'block';
+  resultEl.textContent = '⏳ 진단 중…';
+  btn.disabled = true;
+
+  const token = (document.getElementById('syncToken').value || '').trim()
+             || localStorage.getItem('META_TOKEN') || '';
+  if (!token) {
+    resultEl.textContent = '❗ 액세스 토큰이 없어요. 토큰을 먼저 입력해주세요.';
+    btn.disabled = false;
+    return;
+  }
+
+  // 최근 3일 중 데이터가 있을 가능성이 높은 기간 사용
+  const today = new Date();
+  const fmt = d => d.toISOString().substring(0, 10);
+  const dateFrom = fmt(new Date(today - 6 * 86400000)); // 7일 전
+  const dateTo   = fmt(new Date(today - 1 * 86400000)); // 어제
+
+  const sharedAccounts = [
+    { id: 'act_4070941403163951', name: '브스' },
+    { id: 'act_725945530284711',  name: '컬리' },
+  ];
+
+  const attrWindows = encodeURIComponent(JSON.stringify(['7d_click','1d_view']));
+  const timeRange   = encodeURIComponent(JSON.stringify({ since: dateFrom, until: dateTo }));
+  const fields      = encodeURIComponent('ad_id,ad_name,impressions,spend,actions,action_values');
+
+  let report = `📋 진단 기간: ${dateFrom} ~ ${dateTo}\n`;
+  report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  for (const acct of sharedAccounts) {
+    report += `▶ ${acct.name} (${acct.id})\n`;
+    const url = `https://graph.facebook.com/v19.0/${acct.id}/insights`
+      + `?fields=${fields}`
+      + `&time_range=${timeRange}`
+      + `&time_increment=1`
+      + `&level=ad`
+      + `&limit=3`
+      + `&action_attribution_windows=${attrWindows}`
+      + `&access_token=${encodeURIComponent(token)}`;
+
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (json.error) {
+        report += `  ❌ API 오류: [${json.error.code}] ${json.error.message}\n`;
+        if (json.error.code === 190) {
+          report += `  → 토큰이 만료됐거나 유효하지 않아요.\n`;
+        } else if (json.error.code === 100) {
+          report += `  → 권한 문제일 수 있어요 (ads_read 권한 확인).\n`;
+        }
+        report += '\n';
+        continue;
+      }
+
+      const data = json.data || [];
+      if (data.length === 0) {
+        report += `  ⚠ 해당 기간에 데이터 없음 (광고 미집행?)\n\n`;
+        continue;
+      }
+
+      report += `  ✓ ${data.length}개 ad 행 수신\n`;
+
+      // 모든 행에서 action_type 수집
+      const allActionTypes  = new Set();
+      const allActionVTypes = new Set();
+      let sampleWithActions = null;
+
+      for (const row of data) {
+        (row.actions || []).forEach(a => allActionTypes.add(a.action_type));
+        (row.action_values || []).forEach(a => allActionVTypes.add(a.action_type));
+        if ((row.actions || []).length > 0 && !sampleWithActions) {
+          sampleWithActions = row;
+        }
+      }
+
+      if (allActionTypes.size === 0) {
+        report += `  ⚠ actions 배열이 모두 비어있음 → 해당 기간 전환 0\n`;
+      } else {
+        report += `\n  📌 actions 에 포함된 action_type 목록:\n`;
+        [...allActionTypes].sort().forEach(t => {
+          // purchase 관련 항목은 강조
+          const star = (t.includes('purchase') || t.includes('collab')) ? ' ◀◀◀' : '';
+          report += `     • ${t}${star}\n`;
+        });
+
+        // purchase 관련 값 직접 추출
+        report += `\n  🛒 구매 관련 값 (샘플 행):\n`;
+        const sa = sampleWithActions;
+        if (sa) {
+          const checkTypes = [
+            'purchase',
+            'collaborative_ads.purchase',
+            'offsite_conversion.fb_pixel_purchase',
+            'omni_purchase',
+            'web_in_store_purchase',
+          ];
+          checkTypes.forEach(t => {
+            const found = (sa.actions || []).find(a => a.action_type === t);
+            const foundV = (sa.action_values || []).find(a => a.action_type === t);
+            if (found || foundV) {
+              report += `     "${t}"\n`;
+              report += `       count: ${found ? found.value : '-'}\n`;
+              report += `       value: ${foundV ? foundV.value : '-'}\n`;
+            }
+          });
+
+          // purchase 포함된 것만 전부
+          const purchaseTypes = [...allActionTypes].filter(t =>
+            t.toLowerCase().includes('purchase') || t.toLowerCase().includes('buy')
+          );
+          if (purchaseTypes.length > 0) {
+            report += `\n  💰 purchase 키워드 포함 action_type 전체:\n`;
+            purchaseTypes.forEach(t => {
+              const found = (sa.actions || []).find(a => a.action_type === t);
+              const foundV = (sa.action_values || []).find(a => a.action_type === t);
+              report += `     "${t}" → count=${found?.value ?? 0}, value=${foundV?.value ?? 0}\n`;
+            });
+          }
+        }
+      }
+
+      report += '\n';
+    } catch (e) {
+      report += `  ❌ fetch 오류: ${e.message}\n\n`;
+    }
+  }
+
+  report += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  report += `현재 코드가 읽는 action_type:\n`;
+  report += `  • 구매수:    collaborative_ads.purchase → purchase (폴백)\n`;
+  report += `  • 구매전환값: collaborative_ads.purchase → purchase (폴백)\n`;
+  report += `  • 장바구니:  collaborative_ads.add_to_cart → add_to_cart (폴백)\n`;
+  report += `위 목록과 비교해서 맞지 않으면 수정 필요해요.`;
+
+  resultEl.textContent = report;
+  btn.disabled = false;
 }
 
 function setSyncProgress(msg, type) {
