@@ -384,6 +384,28 @@ input[type="number"] { width: 60px; }
 }
 .btn-apply:hover { background: #2f4dbf; }
 
+/* ── 날짜 프리셋 드롭다운 ── */
+.date-preset-select {
+  padding: 6px 10px;
+  border: 1.5px solid var(--border2);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Pretendard', sans-serif;
+  color: var(--ink2);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+  min-width: 90px;
+}
+.date-preset-select:hover { border-color: var(--accent); }
+.date-preset-select.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
 /* channel pill in filter */
 .ch-pill-list {
   display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
@@ -1357,9 +1379,22 @@ input[type="number"] { width: 60px; }
     <!-- 기간 -->
     <div class="filter-group">
       <span class="filter-label">기간</span>
-      <input type="date" id="dateFrom">
+      <select id="datePreset" class="date-preset-select" onchange="applyDatePreset(this.value)" title="빠른 기간 선택">
+        <option value="">기간 선택</option>
+        <option value="today">오늘</option>
+        <option value="yesterday">어제</option>
+        <option value="7d">최근 7일</option>
+        <option value="14d">최근 14일</option>
+        <option value="30d">최근 30일</option>
+        <option value="this_month">이번 달</option>
+        <option value="last_month">지난 달</option>
+        <option value="this_year">올해</option>
+        <option value="last_year">작년</option>
+        <option value="all">전체</option>
+      </select>
+      <input type="date" id="dateFrom" onchange="onDateManualChange()">
       <span style="color:var(--ink3);font-size:12px;">~</span>
-      <input type="date" id="dateTo">
+      <input type="date" id="dateTo" onchange="onDateManualChange()">
       <button id="btnCompPeriodToggle" onclick="toggleComparePeriod()"
         style="padding:5px 10px;border:1.5px dashed var(--border2);border-radius:7px;
                font-size:11px;font-weight:600;color:var(--ink3);background:transparent;
@@ -1924,9 +1959,96 @@ function updateDateRange(ch) {
 }
 
 // ── 필터 초기화 ──
+// ── 날짜 프리셋 ──────────────────────────────
+function applyDatePreset(preset) {
+  if (!preset) return;
+  const today = new Date();
+  const fmt = d => d.toISOString().substring(0, 10);
+  const y = today.getFullYear(), m = today.getMonth();
+  let from = '', to = '';
+
+  switch (preset) {
+    case 'today':
+      from = to = fmt(today); break;
+    case 'yesterday': {
+      const d = new Date(today); d.setDate(d.getDate() - 1);
+      from = to = fmt(d); break;
+    }
+    case '7d':
+      from = fmt(new Date(today - 6 * 86400000)); to = fmt(today); break;
+    case '14d':
+      from = fmt(new Date(today - 13 * 86400000)); to = fmt(today); break;
+    case '30d':
+      from = fmt(new Date(today - 29 * 86400000)); to = fmt(today); break;
+    case 'this_month':
+      from = fmt(new Date(y, m, 1)); to = fmt(today); break;
+    case 'last_month':
+      from = fmt(new Date(y, m - 1, 1)); to = fmt(new Date(y, m, 0)); break;
+    case 'this_year':
+      from = `${y}-01-01`; to = fmt(today); break;
+    case 'last_year':
+      from = `${y - 1}-01-01`; to = `${y - 1}-12-31`; break;
+    case 'all':
+      from = to = ''; break;
+    default: return;
+  }
+
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value   = to;
+  syncPresetUI(preset);
+  saveDateRange(preset);
+  applyFilters();
+}
+
+// 날짜를 직접 바꿨을 때 → 드롭다운 "직접 입력"으로 리셋
+function onDateManualChange() {
+  document.getElementById('datePreset').value = '';
+  document.getElementById('datePreset').classList.remove('active');
+  saveDateRange('');
+}
+
+// 드롭다운 활성화 스타일 동기화
+function syncPresetUI(preset) {
+  const sel = document.getElementById('datePreset');
+  sel.value = preset || '';
+  sel.classList.toggle('active', !!preset);
+}
+
+// localStorage에 현재 날짜 범위 저장
+function saveDateRange(preset) {
+  try {
+    localStorage.setItem('meta_ads_daterange', JSON.stringify({
+      from:   document.getElementById('dateFrom').value,
+      to:     document.getElementById('dateTo').value,
+      preset: preset || '',
+    }));
+  } catch (e) {}
+}
+
+// localStorage에서 날짜 범위 복원
+// initFilters 에서 기본값 세팅 후 덮어쓰기 방식으로 호출
+function restoreDateRange() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('meta_ads_daterange') || 'null');
+    if (!saved) return false;
+    // 데이터 날짜 범위 안에 있는지 검증
+    const dates = RAW.map(r => String(r['일']).substring(0, 10)).filter(Boolean).sort();
+    const minD = dates[0] || '', maxD = dates[dates.length - 1] || '';
+    // from/to 가 데이터 범위 내에 있어야 복원 (없으면 무시)
+    const from = saved.from && saved.from >= minD ? saved.from : (saved.preset === 'all' ? '' : null);
+    const to   = saved.to   && saved.to   <= maxD ? saved.to   : (saved.preset === 'all' ? '' : null);
+    if (from === null || to === null) return false;
+    document.getElementById('dateFrom').value = from;
+    document.getElementById('dateTo').value   = to;
+    syncPresetUI(saved.preset || '');
+    return true;
+  } catch (e) { return false; }
+}
+
 function initFilters() {
   const dates = RAW.map(r => String(r['일']).substring(0,10)).filter(Boolean).sort();
   if (dates.length) {
+    // 기본값: 전체 범위 (복원이 없을 때 사용)
     document.getElementById('dateFrom').value = dates[0];
     document.getElementById('dateTo').value   = dates[dates.length-1];
     document.getElementById('dateFrom').min   = dates[0];
@@ -1934,6 +2056,8 @@ function initFilters() {
     document.getElementById('dateTo').min     = dates[0];
     document.getElementById('dateTo').max     = dates[dates.length-1];
   }
+  // 저장된 날짜 범위가 있으면 복원 (기본값 덮어쓰기)
+  restoreDateRange();
   document.getElementById('dataInfo').textContent =
     `총 ${Object.keys(AGG).length}개 소재 · ${dates[0] || ''} ~ ${dates[dates.length-1] || ''}`;
   initChannelPills();
@@ -1971,6 +2095,9 @@ function onCampaignChange() {
 function applyFilters() {
   const from = document.getElementById('dateFrom').value;
   const to   = document.getElementById('dateTo').value;
+
+  // 적용 버튼 클릭 시 현재 날짜 범위 저장 (프리셋이 없으면 직접 입력으로)
+  saveDateRange(document.getElementById('datePreset').value || '');
 
   const filtered = {};
   RAW.forEach(r => {
