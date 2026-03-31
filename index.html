@@ -4044,16 +4044,46 @@ function applyThumb(rowId, info) {
 }
 
 // ── localStorage 저장/복원 ──
+
+// 대시보드에서 실제 사용하는 컬럼만 유지 (localStorage 용량 절약)
+const SAVE_KEYS = new Set([
+  '광고 ID', '광고 이름', '광고 세트 이름', '캠페인 이름', '캠페인 ID',
+  '일', '목표',
+  '지출 금액 (KRW)', '노출', '도달', '빈도',
+  '링크 클릭', 'CPC(링크 클릭당 비용)', 'CTR(전체)', 'CPM(1,000회 노출당 비용)',
+  '구매', '구매 전환값', '구매 ROAS(광고 지출 대비 수익률)',
+  '장바구니에 담기', '랜딩 페이지 조회', '결제 시작',
+  '공유 항목이 포함된 구매',        '공유 항목의 구매',
+  '공유 항목이 포함된 구매 전환값',  '공유 항목의 구매 전환값',
+  '공유 항목이 포함된 장바구니에 담기', '공유 항목의 장바구니에 담기',
+  '공유 항목이 포함된 랜딩 페이지 조회', '공유 항목의 랜딩 페이지 조회',
+  '공유 항목이 포함된 결제 시작',    '공유 항목의 결제 시작',
+  '__channel', '__accountId', '__apiRow',
+]);
+
+function slimRow(row) {
+  const out = {};
+  for (const k in row) {
+    // 내부 __ 키는 항상 포함, 나머지는 whitelist 체크
+    if (!k.startsWith('__') && !SAVE_KEYS.has(k)) continue;
+    const v = row[k];
+    if (v === '' || v === null || v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 function saveToLocal() {
   const tag = document.getElementById('__embedded_data__');
   if (tag && tag.textContent.trim()) return;
   try {
     const now = new Date().toISOString();
-    localStorage.setItem('meta_ads_raw', JSON.stringify(RAW));
+    localStorage.setItem('meta_ads_raw', JSON.stringify(RAW.map(slimRow)));
     localStorage.setItem('meta_ads_files', JSON.stringify(LOADED_FILES));
     localStorage.setItem('meta_ads_updated', now);
   } catch(e) {
     console.warn('localStorage 저장 실패:', e);
+    showToast('⚠ 저장 실패: 데이터 용량 초과. 오래된 파일 삭제 후 다시 시도해주세요.');
   }
 }
 
