@@ -2382,7 +2382,7 @@ function renderTab(tab) {
     return `
     <div class="creative-card ${rankClass}" draggable="true" data-id="${r.id}">
       <div class="card-rank">${rankLabel}</div>
-      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="width:100%;position:relative;padding-bottom:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#e8eaf0 25%,#f7f8fc 50%,#e8eaf0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;"></div>
+      <div id="thumb-${r.id.replace(/[^a-zA-Z0-9]/g,'_')}" style="width:100%;position:relative;padding-bottom:75%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#e8eaf0 25%,#f7f8fc 50%,#e8eaf0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;"></div>
       <div class="card-name">
         <span class="tag" style="background:${goalColor}1a;color:${goalColor}">${goalLabel}</span>
         ${r.name}
@@ -3973,14 +3973,20 @@ async function loadThumbnails(items) {
         if (creative.video_id || creative.object_story_spec?.video_data) {
           const vidId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
           if (vidId) {
-            const vRes = await fetch(`https://graph.facebook.com/v19.0/${vidId}?fields=thumbnails&access_token=${META_TOKEN}`);
-            const vData = await vRes.json();
-            const thumbUrl = vData.thumbnails?.data?.[0]?.uri || creative.thumbnail_url;
-            info = { type: 'video', thumbUrl };
+            try {
+              const vRes = await fetch(`https://graph.facebook.com/v19.0/${vidId}?fields=thumbnails&access_token=${META_TOKEN}`);
+              const vData = await vRes.json();
+              const thumbUrl = vData.thumbnails?.data?.[0]?.uri || creative.thumbnail_url;
+              if (thumbUrl) info = { type: 'video', thumbUrl };
+            } catch(ve) { /* 비디오 썸네일 실패 → 이미지 경로로 폴백 */ }
           }
         }
-        if (!info && creative.thumbnail_url) {
-          info = { type: 'image', thumbUrl: creative.thumbnail_url };
+        // 이미지 광고이거나 비디오 썸네일 취득 실패 시 thumbnail_url 사용
+        if (!info) {
+          const thumbUrl = creative.thumbnail_url
+            || creative.object_story_spec?.link_data?.image_url
+            || creative.object_story_spec?.photo_data?.images?.[0]?.url;
+          if (thumbUrl) info = { type: creative.video_id ? 'video' : 'image', thumbUrl };
         }
         if (info) {
           thumbCache[adId] = info;
@@ -4003,28 +4009,21 @@ function applyThumb(rowId, info) {
   const el = document.getElementById(elId);
   if (!el) return;
 
-  // 컨테이너: 기본 1:1, 세로형 감지 후 조정
+  // 컨테이너 — 높이는 이미지가 결정, 가로 100%
   const wrap = document.createElement('div');
   wrap.id = elId;
-  wrap.style.cssText = 'width:100%;position:relative;padding-bottom:100%;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
+  wrap.style.cssText = 'width:100%;position:relative;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#f0f0f5;';
 
   const img = document.createElement('img');
   img.src = info.thumbUrl;
   img.alt = '소재 썸네일';
   img.loading = 'lazy';
-  img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
-
-  img.onload = function() {
-    const ratio = this.naturalHeight / this.naturalWidth;
-    if (ratio > 1.2) {
-      // 세로형(릴스) 소재 — 좌우 여백을 두고 위아래 꽉 채움 (비율 그대로 유지)
-      wrap.style.paddingBottom = (ratio * 100).toFixed(2) + '%';
-      wrap.style.background = '#1a1a1a'; // 세로형은 어두운 배경
-    }
-    // 정방형 또는 가로형 — 1:1 유지, contain으로 품질 보존
-  };
+  // 원본 비율 그대로 — width:100%, height:auto 로 자연 높이 결정
+  img.style.cssText = 'width:100%;height:auto;display:block;';
 
   img.onerror = function() {
+    // 로드 실패 시 플레이스홀더 (1:1 비율 유지)
+    wrap.style.paddingBottom = '100%';
     this.style.display = 'none';
     const msg = document.createElement('div');
     msg.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9299ab;font-size:11px;';
